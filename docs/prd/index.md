@@ -1,0 +1,23 @@
+# 🛋️ 3D 책상 컨피규레이터 플랫폼 Product Requirements Document (PRD)
+
+## Table of Contents
+
+- [🛋️ 3D 책상 컨피규레이터 플랫폼 Product Requirements Document (PRD)](#table-of-contents)
+  - [Goals and Background Context](./goals-and-background-context.md)
+    - [Goals](./goals-and-background-context.md#goals)
+    - [Background Context](./goals-and-background-context.md#background-context)
+    - [Change Log](./goals-and-background-context.md#change-log)
+  - [Requirements](./requirements.md)
+    - [Functional](./requirements.md#functional)
+    - [Non Functional](./requirements.md#non-functional)
+    - [Compatibility Requirements](./requirements.md#compatibility-requirements)
+  - [User Interface Design Goals](./user-interface-design-goals.md)
+    - [Overall UX Vision](./user-interface-design-goals.md#overall-ux-vision)
+    - [Technical Assumptions](./user-interface-design-goals.md#technical-assumptions)
+    - [Repository Structure: Monorepo](./user-interface-design-goals.md#repository-structure-monorepo)
+    - [Service Architecture: Serverless](./user-interface-design-goals.md#service-architecture-serverless)
+    - [Testing Requirements: Unit + Integration](./user-interface-design-goals.md#testing-requirements-unit-integration)
+  - [Epic List](./epic-list.md)
+  - [Next Steps](./next-steps.md)
+    - [UX Expert Sally에게 전달할 최종 프롬프트](./next-steps.md#ux-expert-sally에게-전달할-최종-프롬프트)
+    - [Architect Winston에게 전달할 최종 프롬프트](./next-steps.md#architect-winston에게-전달할-최종-프롬프트)
