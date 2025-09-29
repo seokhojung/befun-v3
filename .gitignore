@@ -107,3 +107,6 @@ temp/
 # Supabase
 supabase/.branches
 supabase/.temp
+
+*storybook.log
+storybook-static

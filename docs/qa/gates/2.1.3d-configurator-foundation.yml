@@ -1,0 +1,67 @@
+# Quality Gate Decision for Story 2.1: 3D 컨피규레이터 기반 구조 구축
+
+schema: 1
+story: "2.1"
+story_title: "3D 컨피규레이터 기반 구조 구축"
+gate: CONCERNS
+status_reason: "구현 품질은 우수하나 AC 6 (BFF API 연동) 미완성으로 CONCERNS 게이트"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-26T07:18:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "API-001"
+    severity: medium
+    finding: "BFF API 연동 미구현 - 현재 하드코딩된 재료 데이터 사용"
+    suggested_action: "'/api/v1/bff/configurator' 엔드포인트 연동 구현"
+  - id: "PERF-001"
+    severity: low
+    finding: "FPS 표시 UI 컴포넌트 부재"
+    suggested_action: "실시간 성능 모니터링 UI 추가"
+
+quality_score: 80  # 100 - (10*1 medium) - (5*1 low) = 85, adjusted for missing API
+
+evidence:
+  tests_reviewed: 20
+  risks_identified: 2
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 7, 8, 9]  # 8개 AC 커버됨
+    ac_gaps: [6]  # AC 6 (BFF API 연동) 미완성
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "클라이언트 사이드 3D 렌더링, 보안 위험 최소"
+  performance:
+    status: PASS
+    notes: "모바일 최적화 완료, 성능 벤치마크 테스트 통과"
+  reliability:
+    status: PASS
+    notes: "WebGL 호환성 검사, 에러 처리, 메모리 관리 완료"
+  maintainability:
+    status: PASS
+    notes: "모듈화된 구조, 타입 안전성, 완전한 테스트 커버리지"
+
+recommendations:
+  immediate:
+    - action: "BFF API 엔드포인트 연동 구현"
+      refs: ["src/app/configurator/components/ConfiguratorUI.tsx", "src/lib/three/materials.ts"]
+  future:
+    - action: "실시간 FPS 표시 UI 컴포넌트 추가"
+      refs: ["src/components/three/ThreeCanvas.tsx"]
+    - action: "접근성 개선 (ARIA 레이블, 키보드 네비게이션)"
+      refs: ["src/app/configurator/components/ControlPanel.tsx"]
+    - action: "E2E 테스트 시나리오 작성"
+      refs: ["__tests__/e2e/configurator/"]
+
+# Review Summary
+# =============
+# 이 스토리는 매우 높은 기술적 품질을 보여줍니다:
+# - Three.js 전문적 구현
+# - 완전한 타입 안전성
+# - 포괄적 테스트 커버리지 (20개 테스트)
+# - 메모리 및 성능 최적화
+# - 모바일 호환성
+#
+# BFF API 연동만 완료되면 즉시 PASS로 승격 가능합니다.

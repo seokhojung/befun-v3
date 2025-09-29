@@ -1,0 +1,267 @@
+// 가격 계산 API 엔드포인트 테스트
+import { NextRequest } from 'next/server'
+import { POST } from '@/app/api/v1/pricing/route'
+import { createAuthenticatedRequest, expectApiResponse, testData } from '../../helpers/test-utils'
+import * as authModule from '@/lib/api/auth'
+
+// 인증 모의
+jest.mock('@/lib/api/auth')
+const mockValidateAuth = authModule.validateAuth as jest.MockedFunction<typeof authModule.validateAuth>
+
+describe('/api/v1/pricing', () => {
+  beforeEach(() => {
+    mockValidateAuth.mockResolvedValue({
+      user: { id: 'test-user-id', email: 'test@example.com' } as any,
+      session: {} as any,
+      requestId: 'test-request-id',
+    })
+  })
+
+  describe('POST /api/v1/pricing', () => {
+    const validPricingRequest = testData.priceCalculation
+
+    it('가격을 성공적으로 계산해야 함', async () => {
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: validPricingRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expectApiResponse({ status: response.status, body })
+
+      expect(body.data).toHaveProperty('subtotal')
+      expect(body.data).toHaveProperty('tax')
+      expect(body.data).toHaveProperty('total')
+      expect(body.data).toHaveProperty('discount')
+      expect(body.data).toHaveProperty('breakdown')
+
+      expect(typeof body.data.subtotal).toBe('number')
+      expect(typeof body.data.tax).toBe('number')
+      expect(typeof body.data.total).toBe('number')
+      expect(body.data.subtotal).toBeGreaterThan(0)
+      expect(body.data.total).toBeGreaterThan(0)
+    })
+
+    it('할인 코드가 적용된 가격을 계산해야 함', async () => {
+      const requestWithDiscount = {
+        ...validPricingRequest,
+        discount_code: 'WELCOME10',
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: requestWithDiscount,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.discount).toBeGreaterThan(0)
+      expect(body.data.discount_code).toBe('WELCOME10')
+      expect(body.data.total).toBeLessThan(body.data.subtotal)
+    })
+
+    it('급행 주문 수수료를 적용해야 함', async () => {
+      const rushOrderRequest = {
+        ...validPricingRequest,
+        rush_order: true,
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: rushOrderRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.breakdown).toHaveProperty('rush_order_fee')
+      expect(body.data.breakdown.rush_order_fee).toBeGreaterThan(0)
+    })
+
+    it('수량에 따른 할인을 적용해야 함', async () => {
+      const bulkOrderRequest = {
+        ...validPricingRequest,
+        quantity: 5,
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: bulkOrderRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.breakdown).toHaveProperty('quantity_discount')
+      expect(body.data.breakdown.quantity_discount).toBeGreaterThan(0)
+    })
+
+    it('잘못된 치수로 요청 시 검증 오류를 반환해야 함', async () => {
+      const invalidRequest = {
+        ...validPricingRequest,
+        dimensions: {
+          width_cm: -10, // 음수 크기
+          depth_cm: 0, // 0 크기
+          height_cm: 1000, // 너무 큰 크기
+        },
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: invalidRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(body.success).toBe(false)
+      expect(body.error.code).toBe('VALIDATION_FAILED')
+    })
+
+    it('지원하지 않는 재료로 요청 시 오류를 반환해야 함', async () => {
+      const invalidMaterialRequest = {
+        ...validPricingRequest,
+        material: 'unsupported_material',
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: invalidMaterialRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(body.error.code).toBe('VALIDATION_FAILED')
+    })
+
+    it('잘못된 할인 코드로 요청 시 적절한 응답을 반환해야 함', async () => {
+      const invalidDiscountRequest = {
+        ...validPricingRequest,
+        discount_code: 'INVALID_CODE',
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: invalidDiscountRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.discount).toBe(0)
+      expect(body.data).toHaveProperty('discount_error')
+      expect(body.data.discount_error).toContain('Invalid discount code')
+    })
+
+    it('인증되지 않은 요청을 거부해야 함', async () => {
+      mockValidateAuth.mockRejectedValueOnce(new Error('Unauthorized'))
+
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing', {
+        method: 'POST',
+        body: JSON.stringify(validPricingRequest),
+        headers: { 'content-type': 'application/json' },
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(401)
+    })
+
+    it('필수 필드가 누락된 요청을 거부해야 함', async () => {
+      const incompleteRequest = {
+        dimensions: {
+          width_cm: 100,
+          // depth_cm과 height_cm 누락
+        },
+      }
+
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: incompleteRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(body.error.code).toBe('VALIDATION_FAILED')
+      expect(body.error.details).toBeDefined()
+    })
+
+    it('가격 계산 세부 내역이 올바르게 포함되어야 함', async () => {
+      const request = createAuthenticatedRequest({
+        method: 'POST',
+        body: validPricingRequest,
+      })
+
+      const response = await POST(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.breakdown).toHaveProperty('base_price')
+      expect(body.data.breakdown).toHaveProperty('material_cost')
+      expect(body.data.breakdown).toHaveProperty('finish_cost')
+      expect(body.data.breakdown).toHaveProperty('labor_cost')
+      expect(body.data.breakdown).toHaveProperty('shipping_cost')
+
+      // 세부 비용이 모두 숫자여야 함
+      Object.values(body.data.breakdown).forEach((cost: any) => {
+        expect(typeof cost).toBe('number')
+        expect(cost).toBeGreaterThanOrEqual(0)
+      })
+    })
+
+    it('다양한 재료에 대한 가격을 올바르게 계산해야 함', async () => {
+      const materials = ['wood', 'metal', 'plastic', 'composite']
+
+      for (const material of materials) {
+        const request = createAuthenticatedRequest({
+          method: 'POST',
+          body: {
+            ...validPricingRequest,
+            material,
+          },
+        })
+
+        const response = await POST(request)
+        const body = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(body.data.total).toBeGreaterThan(0)
+        expect(body.data.breakdown.material_cost).toBeGreaterThan(0)
+      }
+    })
+
+    it('다양한 마감재에 대한 가격을 올바르게 계산해야 함', async () => {
+      const finishes = ['matte', 'glossy', 'textured', 'natural']
+
+      for (const finish of finishes) {
+        const request = createAuthenticatedRequest({
+          method: 'POST',
+          body: {
+            ...validPricingRequest,
+            finish,
+          },
+        })
+
+        const response = await POST(request)
+        const body = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(body.data.total).toBeGreaterThan(0)
+        expect(body.data.breakdown.finish_cost).toBeGreaterThanOrEqual(0)
+      }
+    })
+  })
+})

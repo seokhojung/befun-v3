@@ -3,6 +3,16 @@ const nextConfig = {
   // React 설정
   reactStrictMode: true,
 
+  // Webpack 설정
+  webpack: (config) => {
+    // Storybook 파일 제외
+    config.module.rules.push({
+      test: /\.stories\.(js|jsx|ts|tsx)$/,
+      use: 'ignore-loader',
+    })
+    return config
+  },
+
   // Vercel 최적화 설정
   poweredByHeader: false,
   compress: true,
