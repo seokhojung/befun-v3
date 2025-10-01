@@ -12,3 +12,5 @@
 | Date | Version | Description | Author |
 |:---|:---|:---|:---|
 | 2025-09-25 | 1.0 | 초기 PRD 작성 | PM John |
+| 2025-09-29 | 1.1 | FR1 재료 요구사항 기존 API 호환으로 수정, Epic 5 추가 | Sarah (PO) |
+| 2025-10-01 | 1.2 | Epic 6 추가 (도커 환경 구성), NFR4 추가 | Sarah (PO) |
