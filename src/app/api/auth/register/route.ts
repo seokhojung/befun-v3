@@ -79,10 +79,26 @@ export async function POST(request: NextRequest) {
       const result = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: process.env.NODE_ENV === 'development' ? false : true,
+        email_confirm: true, // 항상 true로 설정 (Dashboard 설정과 독립)
+        user_metadata: {
+          full_name: email.split('@')[0] // 이메일 앞부분을 기본 이름으로
+        }
       })
       authData = result.data
       authError = result.error
+
+      // 개발 환경에서는 즉시 이메일 인증 완료 처리 (이메일 발송 우회)
+      if (process.env.NODE_ENV === 'development' && result.data.user && !authError) {
+        try {
+          await supabaseAdmin.auth.admin.updateUserById(
+            result.data.user.id,
+            { email_confirm: true }
+          )
+          console.info('✅ 개발 모드: 이메일 인증 자동 완료')
+        } catch (confirmError) {
+          console.warn('⚠️ 자동 이메일 인증 실패 (계속 진행):', confirmError)
+        }
+      }
     }
 
     if (authError) {

@@ -29,13 +29,36 @@ npm run build
 npm run type-check
 ```
 
-### 환경 변수
-`.env.local` 파일을 생성하고 다음 변수들을 설정하세요:
+### 환경 변수 설정
+
+#### 1. Supabase 프로젝트 생성
+1. [Supabase Dashboard](https://supabase.com/dashboard)에 접속
+2. "New Project" 클릭하여 프로젝트 생성
+3. 프로젝트 생성 완료 후 **Settings** → **API** 메뉴로 이동
+
+#### 2. API 키 복사
+**Project API keys** 섹션에서 다음 값들을 복사:
+- **Project URL**: `NEXT_PUBLIC_SUPABASE_URL`에 사용
+- **anon/public key**: `NEXT_PUBLIC_SUPABASE_ANON_KEY`에 사용
+- **service_role key**: `SUPABASE_SERVICE_ROLE_KEY`에 사용 (⚠️ **절대 공개 금지**)
+
+#### 3. `.env.local` 파일 생성
+프로젝트 루트에 `.env.local` 파일을 생성하고 복사한 값들을 입력:
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Next.js Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
 ```
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-key
-```
+
+⚠️ **보안 주의사항**:
+- `.env.local` 파일은 절대 Git에 커밋하지 마세요 (`.gitignore`에 이미 포함됨)
+- `SERVICE_ROLE_KEY`는 서버 사이드에서만 사용하세요
+- 프로덕션 환경에서는 Vercel Environment Variables를 사용하세요
 
 ## 프로젝트 구조
 ```

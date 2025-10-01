@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS public.materials (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
 
+  -- 유니크 제약조건 (ON CONFLICT 지원)
+  CONSTRAINT materials_type_unique UNIQUE(type),
+
   -- 외래키 제약조건
   CONSTRAINT fk_materials_pricing_policy
     FOREIGN KEY (type) REFERENCES pricing_policies(material_type) ON UPDATE CASCADE
@@ -131,12 +134,7 @@ CREATE TABLE IF NOT EXISTS public.price_calculations (
   calculated_price DECIMAL(10,2) NOT NULL,
   price_breakdown JSONB NOT NULL,
   calculation_duration_ms INTEGER, -- 계산 소요 시간
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-
-  -- 인덱스 생성
-  INDEX idx_price_calculations_user_id ON price_calculations(user_id),
-  INDEX idx_price_calculations_material ON price_calculations(material),
-  INDEX idx_price_calculations_created_at ON price_calculations(created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- RLS (Row Level Security) 정책 활성화
@@ -202,6 +200,9 @@ CREATE INDEX IF NOT EXISTS idx_materials_availability ON public.materials(availa
 CREATE INDEX IF NOT EXISTS idx_saved_designs_user_id ON public.saved_designs(user_id);
 CREATE INDEX IF NOT EXISTS idx_saved_designs_material ON public.saved_designs(material);
 CREATE INDEX IF NOT EXISTS idx_saved_designs_created_at ON public.saved_designs(created_at);
+CREATE INDEX IF NOT EXISTS idx_price_calculations_user_id ON public.price_calculations(user_id);
+CREATE INDEX IF NOT EXISTS idx_price_calculations_material ON public.price_calculations(material);
+CREATE INDEX IF NOT EXISTS idx_price_calculations_created_at ON public.price_calculations(created_at);
 
 -- 기본 가격 정책 데이터 삽입
 INSERT INTO public.pricing_policies (material_type, base_price_per_m3, price_modifier, legacy_material)

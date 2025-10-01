@@ -26,12 +26,13 @@ export const supabase = createClient(
 // 연결 상태 확인 헬퍼
 export async function checkSupabaseConnection(): Promise<boolean> {
   try {
-    const { data, error } = await supabase.from('_supabase_dummy_test').select('*').limit(1)
+    // 실제 user_profiles 테이블로 연결 테스트 (RLS 정책으로 인해 빈 결과 반환 가능)
+    const { error } = await supabase.from('user_profiles').select('id').limit(1)
     return !error
   } catch (error) {
     // 개발 환경에서만 로그 출력 (더미 환경 변수 사용 시 예상되는 오류)
     if (process.env.NODE_ENV === 'development') {
-      console.debug('🔗 Supabase 연결 테스트 (더미 환경): ', error instanceof Error ? error.message : error)
+      console.debug('🔗 Supabase 연결 테스트 실패: ', error instanceof Error ? error.message : error)
     }
     return false
   }

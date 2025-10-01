@@ -20,100 +20,72 @@ BeFun v3는 **3D 책상 컨피규레이터 플랫폼** (3D Desk Configurator Pla
 ```bash
 # Development server
 npm run dev
+PORT=3001 npm run dev          # 특정 포트에서 실행
 
-# Build and type checking
-npm run build
-npm run type-check
+# Build and deployment
+npm run build                  # 프로덕션 빌드
+npm run start                  # 프로덕션 서버 시작
+npm run build && npm run start # 로컬 프로덕션 테스트
 
 # Code quality
-npm run lint
-npm run lint:fix
-npm run prettier
-npm run prettier:fix
+npm run type-check             # TypeScript 타입 검사
+npm run lint                   # ESLint 검사
+npm run lint:fix               # ESLint 자동 수정
+npm run prettier               # Prettier 포맷 검사
+npm run prettier:fix           # Prettier 자동 수정
+
+# 배포 전 전체 검증
+npm run build && npm run type-check && npm run lint
 ```
 
 ### 테스팅
+
+#### 단위 테스트 (Jest)
 ```bash
-# Unit tests (Jest)
-npm run test
-npm run test:watch
-npm run test:coverage
+npm run test                   # 전체 테스트 실행
+npm run test:watch             # Watch 모드
+npm run test:coverage          # 커버리지 리포트
 
-# Single test file
+# 특정 테스트 실행
 npm run test -- path/to/test.test.ts
-
-# API-specific tests
 npm run test -- __tests__/api/
-
-# Performance tests
+npm run test -- __tests__/components/
 npm run test -- __tests__/performance/
 
-# Component tests
-npm run test -- __tests__/components/
+# 패턴으로 필터링
+npm run test -- --testPathPattern=api/auth
+npm run test -- --testPathPattern=three
 
-# E2E tests (Playwright)
-npm run test:e2e              # Run E2E tests
-npm run test:e2e:ui           # Interactive UI mode
-npm run test:e2e:headed       # With visible browser
-
-# Storybook tests (Vitest)
-npx vitest run
-```
-
-### Storybook
-```bash
-npm run storybook
-npm run build-storybook
-```
-
-## 일반적인 개발 작업
-
-### 디버깅 및 문제 해결
-```bash
-# 타입 에러 확인
-npm run type-check
-
-# 린트 에러 자동 수정
-npm run lint:fix
-npm run prettier:fix
-
-# 전체 빌드 검증 (배포 전 필수)
-npm run build && npm run type-check
-
-# 특정 포트에서 개발 서버 실행
-PORT=3001 npm run dev
-
-# 프로덕션 빌드 로컬 테스트
-npm run build && npm run start
-```
-
-### 테스트 실행 가이드
-```bash
-# 특정 테스트 패턴 실행
-npm run test -- --testPathPattern=api/auth  # 인증 API 테스트만
-npm run test -- --testPathPattern=three     # Three.js 관련 테스트만
-
-# 디버그 모드로 단일 테스트
+# 디버그 모드
 node --inspect-brk node_modules/.bin/jest __tests__/api/auth/login.test.ts
-
-# E2E 테스트 디버깅
-npm run test:e2e:headed                     # 브라우저 표시
-npm run test:e2e:ui                         # Playwright UI 모드
 ```
 
-### 데이터베이스 작업
+#### E2E 테스트 (Playwright)
+```bash
+npm run test:e2e              # E2E 테스트 실행
+npm run test:e2e:ui           # Interactive UI 모드
+npm run test:e2e:headed       # 브라우저 표시
+```
+
+#### Storybook 테스트 (Vitest)
+```bash
+npm run storybook             # Storybook 개발 서버
+npm run build-storybook       # Storybook 빌드
+npx vitest run                # Storybook 테스트
+```
+
+#### CI 환경 시뮬레이션
+```bash
+npm run test:coverage && npm run type-check && npm run lint
+```
+
+### 데이터베이스 및 헬스체크
 ```bash
 # Supabase 연결 테스트
 curl http://localhost:3000/api/db-test
 
-# 헬스체크 확인
+# 헬스체크
 curl http://localhost:3000/api/health
-```
-
-### 코드 품질 검사
-```bash
-# 전체 테스트 + 커버리지 + 타입체크 + 린트 (CI 환경 시뮬레이션)
-npm run test:coverage && npm run type-check && npm run lint
 ```
 
 ## 주요 기술 제약사항
@@ -273,7 +245,23 @@ src/lib/
 
 ## BMad 에이전트 시스템
 
-이 프로젝트는 개발 워크플로우 자동화를 위해 BMad™ 에이전트를 사용합니다:
+이 프로젝트는 개발 워크플로우 자동화를 위해 BMad™ 에이전트를 사용합니다.
+
+### ⚠️ CRITICAL: 절차 준수 원칙
+
+**어떤 이유로든 정해진 절차를 생략하거나 건너뛰지 않습니다.**
+
+#### 필수 준수 사항
+1. **워크플로우 완전 준수**: BMad 에이전트별 워크플로우의 모든 단계를 순서대로 완료
+2. **체크리스트 완전 이행**: 각 단계의 체크리스트 항목을 모두 확인 후 다음 단계로 진행
+3. **에이전트 역할 존중**: 각 에이전트의 고유 절차와 책임을 완전히 준수
+4. **사용자 승인 필수**: 중요한 단계는 반드시 사용자 확인 후 진행
+5. **효율성 핑계 금지**: 효율성을 이유로 절차를 임의로 생략하거나 단축 금지
+
+#### 위반 시 즉시 중단
+- 절차 생략이 발견되면 즉시 작업 중단
+- 누락된 절차를 완전히 수행한 후 진행
+- 사용자에게 위반 사실을 보고하고 승인 요청
 
 ### 사용 가능한 에이전트
 - **sm** (스크럼 마스터): 스토리 생성 및 세분화
@@ -306,52 +294,28 @@ src/lib/
 └── core-config.yaml  # 프로젝트 설정
 ```
 
-### CRITICAL: 절차 준수 원칙
-
-**어떤 이유로든 정해진 절차를 생략하거나 건너뛰지 않습니다.**
-
-#### 필수 준수 사항
-1. **워크플로우 완전 준수**: BMad 에이전트별 워크플로우의 모든 단계를 순서대로 완료
-2. **체크리스트 완전 이행**: 각 단계의 체크리스트 항목을 모두 확인 후 다음 단계로 진행
-3. **에이전트 역할 존중**: 각 에이전트의 고유 절차와 책임을 완전히 준수
-4. **사용자 승인 필수**: 중요한 단계는 반드시 사용자 확인 후 진행
-5. **효율성 핑계 금지**: 효율성을 이유로 절차를 임의로 생략하거나 단축 금지
-
-#### 위반 시 즉시 중단
-- 절차 생략이 발견되면 즉시 작업 중단
-- 누락된 절차를 완전히 수행한 후 진행
-- 사용자에게 위반 사실을 보고하고 승인 요청
-
 ## 외부 통합
 
-### 쇼핑카트 통합 (Epic 3)
-- **전략**: 단순 리다이렉트 모델 (복잡한 API 통합 없음)
-- **외부 API**: 결제를 위해 기존 쇼핑몰로 리다이렉트
+### 쇼핑카트 통합
+- **전략**: 단순 리다이렉트 모델
+- **외부 API**: 기존 쇼핑몰로 리다이렉트
 - **데이터 흐름**: 디자인 → 장바구니 API → 외부 쇼핑몰 URL
 
 ### API 디자인 패턴
-- **BFF 엔드포인트**: 프론트엔드를 위한 여러 서비스 집계
-- **오류 처리**: 폴백이 있는 표준화된 오류 응답
-- **캐싱**: 가격 정책을 위한 메모리 캐싱 (1시간 TTL)
+- **BFF 엔드포인트**: 여러 서비스 집계
+- **오류 처리**: 폴백 포함 표준화 응답
+- **캐싱**: 가격 정책 메모리 캐싱 (1시간 TTL)
 
 ## 개발 베스트 프랙티스
 
 ### 코드 품질
-- **TypeScript strict 모드**: 모든 코드는 엄격한 타입 검사를 통과해야 함
-- **ESLint**: 커스텀 규칙이 포함된 Next.js 설정
-- **Prettier**: 자동 코드 포맷팅
-- **경로 별칭**: src/ 임포트에는 `@/` 사용
+- **TypeScript strict 모드**: 엄격한 타입 검사
+- **ESLint**: Next.js 설정 + 커스텀 규칙
+- **Prettier**: 자동 포맷팅
+- **경로 별칭**: `@/` 사용 (src/ 임포트)
 
-### 테스팅 전략
-- **Jest**: Next.js 통합 및 jsdom 환경의 단위 테스트
-- **Vitest**: Playwright 브라우저 테스팅을 사용한 Storybook 통합 테스트
-- **Testing Library**: React 컴포넌트 테스팅
-- **MSW**: 통합 테스트를 위한 API 모킹
-- **성능 테스트**: 3D 렌더링 성능을 위한 별도 테스트 스위트
-- **테스트 타임아웃**: 복잡한 3D 작업은 10초
-
-### 성능 요구사항
+### 성능 목표
 - **3D 렌더링**: 모바일 최소 30 FPS
 - **API 응답**: 가격 계산 최대 500ms
-- **콜드 스타트**: 서버리스 함수를 위한 웜업 전략
-- **번들 크기**: 3D 컴포넌트를 위한 코드 스플리팅
+- **서버리스**: 콜드 스타트 웜업 전략
+- **번들**: 코드 스플리팅 적용

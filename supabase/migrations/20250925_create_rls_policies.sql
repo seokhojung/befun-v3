@@ -129,11 +129,7 @@ CREATE TABLE IF NOT EXISTS public.login_attempts (
   email TEXT NOT NULL,
   ip_address INET NOT NULL,
   attempted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  success BOOLEAN DEFAULT FALSE,
-
-  -- 인덱스
-  INDEX idx_login_attempts_email_ip ON login_attempts(email, ip_address),
-  INDEX idx_login_attempts_attempted_at ON login_attempts(attempted_at)
+  success BOOLEAN DEFAULT FALSE
 );
 
 -- RLS 설정
@@ -229,3 +225,7 @@ GRANT ALL ON public.user_settings TO authenticated;
 GRANT SELECT ON public.user_activity_logs TO authenticated;
 GRANT EXECUTE ON FUNCTION public.validate_password_strength TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.log_user_activity TO authenticated;
+
+-- 인덱스 추가 (login_attempts 테이블)
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email_ip ON public.login_attempts(email, ip_address);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_attempted_at ON public.login_attempts(attempted_at);

@@ -35,11 +35,7 @@ CREATE TABLE IF NOT EXISTS public.user_activity_logs (
   details JSONB,
   ip_address INET,
   user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-
-  -- 인덱스 생성
-  INDEX idx_user_activity_logs_user_id ON user_activity_logs(user_id),
-  INDEX idx_user_activity_logs_created_at ON user_activity_logs(created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- RLS (Row Level Security) 정책 활성화
@@ -121,3 +117,5 @@ CREATE TRIGGER on_auth_user_created
 CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON public.user_profiles(email);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_created_at ON public.user_profiles(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_settings_updated_at ON public.user_settings(updated_at);
+CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user_id ON public.user_activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_activity_logs_created_at ON public.user_activity_logs(created_at);

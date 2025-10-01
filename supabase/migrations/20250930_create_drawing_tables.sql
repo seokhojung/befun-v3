@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS drawing_jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  design_id UUID NOT NULL REFERENCES saved_design(id) ON DELETE CASCADE,
+  design_id UUID NOT NULL REFERENCES saved_designs(id) ON DELETE CASCADE,
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
   progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
   file_url TEXT,
@@ -45,20 +45,20 @@ CREATE POLICY "Users can update own drawing jobs"
   USING (auth.uid() = user_id);
 
 -- ================================================
--- 2. Extend saved_design table for drawing management
+-- 2. Extend saved_designs table for drawing management
 -- ================================================
 
 -- Add drawing-related fields
-ALTER TABLE saved_design
+ALTER TABLE saved_designs
 ADD COLUMN IF NOT EXISTS drawing_file_url TEXT,
 ADD COLUMN IF NOT EXISTS drawing_generated_at TIMESTAMP WITH TIME ZONE,
 ADD COLUMN IF NOT EXISTS design_name VARCHAR(100),
 ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
 
 -- Add index for user queries
-CREATE INDEX IF NOT EXISTS idx_saved_design_user_id ON saved_design(user_id);
-CREATE INDEX IF NOT EXISTS idx_saved_design_created_at ON saved_design(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_saved_design_updated_at ON saved_design(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_designs_user_id ON saved_designs(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_designs_created_at ON saved_designs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_designs_updated_at ON saved_designs(updated_at DESC);
 
 -- ================================================
 -- 3. Add updated_at trigger for drawing_jobs
@@ -86,7 +86,7 @@ COMMENT ON COLUMN drawing_jobs.status IS 'Job status: pending, processing, compl
 COMMENT ON COLUMN drawing_jobs.progress IS 'Job progress percentage (0-100)';
 COMMENT ON COLUMN drawing_jobs.file_url IS 'Supabase Storage URL for generated PDF';
 
-COMMENT ON COLUMN saved_design.drawing_file_url IS 'Latest generated drawing PDF URL';
-COMMENT ON COLUMN saved_design.drawing_generated_at IS 'Timestamp of last drawing generation';
-COMMENT ON COLUMN saved_design.design_name IS 'User-specified name for the design';
-COMMENT ON COLUMN saved_design.thumbnail_url IS '3D view thumbnail image URL';
+COMMENT ON COLUMN saved_designs.drawing_file_url IS 'Latest generated drawing PDF URL';
+COMMENT ON COLUMN saved_designs.drawing_generated_at IS 'Timestamp of last drawing generation';
+COMMENT ON COLUMN saved_designs.design_name IS 'User-specified name for the design';
+COMMENT ON COLUMN saved_designs.thumbnail_url IS '3D view thumbnail image URL';
