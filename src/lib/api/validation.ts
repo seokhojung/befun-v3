@@ -53,19 +53,22 @@ export const CommonSchemas = {
   }),
 }
 
+// 디자인 옵션 스키마 (재사용을 위해 별도 정의)
+const designOptionsSchema = z.object({
+  width_cm: z.number().min(10, '너비는 최소 10cm 이상이어야 합니다').max(500, '너비는 최대 500cm까지 가능합니다'),
+  depth_cm: z.number().min(10, '깊이는 최소 10cm 이상이어야 합니다').max(500, '깊이는 최대 500cm까지 가능합니다'),
+  height_cm: z.number().min(10, '높이는 최소 10cm 이상이어야 합니다').max(300, '높이는 최대 300cm까지 가능합니다'),
+  material: z.enum(['wood', 'metal', 'glass', 'fabric'], {
+    errorMap: () => ({ message: '지원되지 않는 재질입니다' }),
+  }),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, '올바른 색상 코드 형식이 아닙니다'),
+  finish: z.enum(['matte', 'glossy', 'satin']).optional(),
+})
+
 // 비즈니스 로직 스키마들
 export const BusinessSchemas = {
   // 디자인 관련 검증
-  designOptions: z.object({
-    width_cm: z.number().min(10, '너비는 최소 10cm 이상이어야 합니다').max(500, '너비는 최대 500cm까지 가능합니다'),
-    depth_cm: z.number().min(10, '깊이는 최소 10cm 이상이어야 합니다').max(500, '깊이는 최대 500cm까지 가능합니다'),
-    height_cm: z.number().min(10, '높이는 최소 10cm 이상이어야 합니다').max(300, '높이는 최대 300cm까지 가능합니다'),
-    material: z.enum(['wood', 'metal', 'glass', 'fabric'], {
-      errorMap: () => ({ message: '지원되지 않는 재질입니다' }),
-    }),
-    color: z.string().regex(/^#[0-9A-F]{6}$/i, '올바른 색상 코드 형식이 아닙니다'),
-    finish: z.enum(['matte', 'glossy', 'satin']).optional(),
-  }),
+  designOptions: designOptionsSchema,
 
   // 가격 계산 요청 검증
   pricingRequest: z.object({
@@ -86,7 +89,7 @@ export const BusinessSchemas = {
   saveDesignRequest: z.object({
     name: z.string().min(1, '디자인 이름을 입력해주세요').max(100, '디자인 이름은 100자 이내로 입력해주세요'),
     description: z.string().max(500, '설명은 500자 이내로 입력해주세요').optional(),
-    options: BusinessSchemas.designOptions,
+    options: designOptionsSchema,
     tags: z.array(z.string().max(20)).max(10, '태그는 최대 10개까지 등록할 수 있습니다').optional(),
     isPublic: z.boolean().default(false),
   }),

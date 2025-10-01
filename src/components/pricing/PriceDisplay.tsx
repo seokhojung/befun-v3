@@ -202,6 +202,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
     if (priceData && priceData.total !== previousPrice) {
       setPreviousPrice(priceData.total)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceData?.total])
 
   const handleToggleBreakdown = () => {

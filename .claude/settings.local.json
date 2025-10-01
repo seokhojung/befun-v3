@@ -6,7 +6,11 @@
       "Bash(npm run install:bmad:*)",
       "Bash(npm create:*)",
       "Bash(node:*)",
-      "Bash(npx create-next-app:*)"
+      "Bash(npx create-next-app:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

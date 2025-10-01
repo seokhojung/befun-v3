@@ -11,6 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Supabase 클라이언트 생성 (싱글톤 패턴)
+// 브라우저와 서버 양쪽에서 사용 가능한 클라이언트
 export const supabase = createClient(
   supabaseUrl || 'https://example.supabase.co',
   supabaseAnonKey || 'dummy-key',
@@ -18,18 +19,6 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-    }
-  }
-)
-
-// 서버사이드 전용 클라이언트 (서비스 역할 키 사용)
-export const supabaseAdmin = createClient(
-  supabaseUrl || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-service-key',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
     }
   }
 )

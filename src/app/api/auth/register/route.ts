@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { isMockMode } from '@/lib/utils/env-check'
+import { mockCreateUser } from '@/lib/utils/mock-auth'
+import { getCorsHeaders } from '@/lib/utils/cors'
 import type { RegisterRequest, ApiResponse, AuthResponse } from '@/types/auth'
 
 export async function POST(request: NextRequest) {
@@ -61,12 +64,26 @@ export async function POST(request: NextRequest) {
     // User-Agent 가져오기
     const userAgent = request.headers.get('user-agent') || 'Unknown'
 
-    // Supabase를 통한 사용자 등록
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: process.env.NODE_ENV === 'development' ? false : true, // 개발 환경에서는 이메일 확인 생략
-    })
+    // Mock 모드 또는 실제 Supabase 사용
+    let authData: { user: any }
+    let authError: { message: string } | null = null
+
+    if (isMockMode()) {
+      // Mock 모드: 메모리 기반 인증
+      console.info('🎭 Mock 모드: 회원가입 시뮬레이션')
+      const mockResult = await mockCreateUser(email, password)
+      authData = mockResult.data
+      authError = mockResult.error
+    } else {
+      // 실제 Supabase를 통한 사용자 등록
+      const result = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: process.env.NODE_ENV === 'development' ? false : true,
+      })
+      authData = result.data
+      authError = result.error
+    }
 
     if (authError) {
       // Supabase 에러 처리
@@ -93,35 +110,39 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // 성공적인 가입 로그 기록 (실제 Supabase 연결시 활성화)
-    try {
-      // 로그인 시도 기록 (성공)
-      await supabaseAdmin
-        .from('login_attempts')
-        .insert({
-          email,
-          ip_address: clientIp,
-          success: true
-        })
-
-      // 사용자 활동 로그 기록
-      if (authData.user) {
+    // 성공적인 가입 로그 기록 (실제 Supabase 연결시만 활성화)
+    if (!isMockMode()) {
+      try {
+        // 로그인 시도 기록 (성공)
         await supabaseAdmin
-          .from('user_activity_logs')
+          .from('login_attempts')
           .insert({
-            user_id: authData.user.id,
-            action: 'user_registered',
-            details: {
-              registration_method: 'email',
-              user_agent: userAgent
-            },
+            email,
             ip_address: clientIp,
-            user_agent: userAgent
+            success: true
           })
+
+        // 사용자 활동 로그 기록
+        if (authData.user) {
+          await supabaseAdmin
+            .from('user_activity_logs')
+            .insert({
+              user_id: authData.user.id,
+              action: 'user_registered',
+              details: {
+                registration_method: 'email',
+                user_agent: userAgent
+              },
+              ip_address: clientIp,
+              user_agent: userAgent
+            })
+        }
+      } catch (logError) {
+        // 로그 기록 실패해도 회원가입은 성공으로 처리
+        console.error('Failed to log user registration:', logError)
       }
-    } catch (logError) {
-      // 로그 기록 실패해도 회원가입은 성공으로 처리
-      console.error('Failed to log user registration:', logError)
+    } else {
+      console.info('🎭 Mock 모드: 로그 기록 생략')
     }
 
     const response: AuthResponse = {
@@ -151,10 +172,6 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: getCorsHeaders('POST, OPTIONS'),
   })
 }

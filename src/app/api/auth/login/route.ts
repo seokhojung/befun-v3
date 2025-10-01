@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { isMockMode } from '@/lib/utils/env-check'
+import { mockSignIn } from '@/lib/utils/mock-auth'
+import { getCorsHeaders } from '@/lib/utils/cors'
 import type { LoginRequest, ApiResponse, AuthResponse } from '@/types/auth'
 
 export async function POST(request: NextRequest) {
@@ -25,57 +29,71 @@ export async function POST(request: NextRequest) {
     // User-Agent 가져오기
     const userAgent = request.headers.get('user-agent') || 'Unknown'
 
-    // 로그인 시도 횟수 확인 (Rate Limiting)
-    try {
-      const { data: rateLimitCheck } = await supabaseAdmin
-        .rpc('check_login_rate_limit', {
-          user_email: email,
-          client_ip: clientIp,
-          max_attempts: 5,
-          time_window: '1 hour'
-        })
+    // Rate Limiting 및 로그인 처리 (Mock 또는 실제)
+    let authData: { user: any; session: any }
+    let authError: { message: string } | null = null
 
-      if (!rateLimitCheck) {
-        // 로그인 시도 기록 (실패)
+    if (isMockMode()) {
+      // Mock 모드: 메모리 기반 인증
+      console.info('🎭 Mock 모드: 로그인 시뮬레이션')
+      const mockResult = await mockSignIn(email, password)
+      authData = mockResult.data
+      authError = mockResult.error
+    } else {
+      // 실제 환경: Rate Limiting 확인
+      try {
+        const { data: rateLimitCheck } = await supabaseAdmin
+          .rpc('check_login_rate_limit', {
+            user_email: email,
+            client_ip: clientIp,
+            max_attempts: 5,
+            time_window: '1 hour'
+          })
+
+        if (!rateLimitCheck) {
+          // 로그인 시도 기록 (실패)
+          await supabaseAdmin
+            .from('login_attempts')
+            .insert({
+              email,
+              ip_address: clientIp,
+              success: false
+            })
+
+          return NextResponse.json<ApiResponse>({
+            success: false,
+            error: {
+              message: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',
+              code: 'RATE_LIMIT_EXCEEDED'
+            }
+          }, { status: 429 })
+        }
+      } catch (rateLimitError) {
+        // Rate limiting 체크 실패시 로그만 남기고 계속 진행
+        console.warn('Rate limit check failed:', rateLimitError)
+      }
+
+      // Supabase를 통한 로그인 시도
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      authData = result.data
+      authError = result.error
+
+      // 로그인 시도 기록
+      const loginSuccess = !authError && authData.user
+      try {
         await supabaseAdmin
           .from('login_attempts')
           .insert({
             email,
             ip_address: clientIp,
-            success: false
+            success: loginSuccess
           })
-
-        return NextResponse.json<ApiResponse>({
-          success: false,
-          error: {
-            message: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',
-            code: 'RATE_LIMIT_EXCEEDED'
-          }
-        }, { status: 429 })
+      } catch (logError) {
+        console.error('Failed to log login attempt:', logError)
       }
-    } catch (rateLimitError) {
-      // Rate limiting 체크 실패시 로그만 남기고 계속 진행
-      console.warn('Rate limit check failed:', rateLimitError)
-    }
-
-    // Supabase를 통한 로그인 시도
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    // 로그인 시도 기록
-    const loginSuccess = !authError && authData.user
-    try {
-      await supabaseAdmin
-        .from('login_attempts')
-        .insert({
-          email,
-          ip_address: clientIp,
-          success: loginSuccess
-        })
-    } catch (logError) {
-      console.error('Failed to log login attempt:', logError)
     }
 
     if (authError || !authData.user || !authData.session) {
@@ -103,23 +121,27 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // 성공적인 로그인 활동 로그 기록
-    try {
-      await supabaseAdmin
-        .from('user_activity_logs')
-        .insert({
-          user_id: authData.user.id,
-          action: 'user_login',
-          details: {
-            login_method: 'email',
-            user_agent: userAgent,
-            successful: true
-          },
-          ip_address: clientIp,
-          user_agent: userAgent
-        })
-    } catch (logError) {
-      console.error('Failed to log user login activity:', logError)
+    // 성공적인 로그인 활동 로그 기록 (실제 Supabase만)
+    if (!isMockMode()) {
+      try {
+        await supabaseAdmin
+          .from('user_activity_logs')
+          .insert({
+            user_id: authData.user.id,
+            action: 'user_login',
+            details: {
+              login_method: 'email',
+              user_agent: userAgent,
+              successful: true
+            },
+            ip_address: clientIp,
+            user_agent: userAgent
+          })
+      } catch (logError) {
+        console.error('Failed to log user login activity:', logError)
+      }
+    } else {
+      console.info('🎭 Mock 모드: 활동 로그 생략')
     }
 
     const response: AuthResponse = {
@@ -193,12 +215,6 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production'
-        ? 'https://yourdomain.com' // 프로덕션에서는 실제 도메인으로 변경 필요
-        : 'http://localhost:3000',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: getCorsHeaders('POST, OPTIONS'),
   })
 }

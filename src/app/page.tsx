@@ -55,16 +55,16 @@ export default function Home() {
           ) : (
             <>
               <button
+                onClick={() => router.push('/configurator')}
+                className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors shadow-lg"
+              >
+                3D 컨피규레이터 시작하기
+              </button>
+              <button
                 onClick={() => router.push('/profile')}
                 className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
               >
                 마이페이지
-              </button>
-              <button
-                disabled
-                className="bg-gray-400 text-white px-8 py-4 rounded-lg text-lg font-semibold cursor-not-allowed shadow-lg"
-              >
-                3D 컨피규레이터 (곧 출시)
               </button>
             </>
           )}

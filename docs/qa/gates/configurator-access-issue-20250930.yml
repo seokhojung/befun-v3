@@ -1,0 +1,286 @@
+# QA Gate: 컨피규레이터 접근 불가 이슈
+# Story: 2.1 3D Configurator Foundation
+# Issue: UI-001 - Configurator Button Disabled
+# Date: 2025-09-30
+# Reviewed By: Quinn (Test Architect)
+
+story: "2.1"
+gate_type: "BUG_REPORT"
+title: "3D 컨피규레이터 접근 불가 - 버튼 비활성화 이슈"
+date: 2025-09-30
+reviewer: Quinn
+status: ANALYSIS_IN_PROGRESS
+
+## 문제 보고
+
+### 사용자 보고 내용
+**증상**:
+- 메인 페이지에서 "3D 컨피규레이터 (곧 출시)" 버튼 클릭 불가
+- 버튼이 회색으로 비활성화되어 있음
+- 직접 URL(`/configurator`) 접근 시 로그인 페이지로 리디렉션
+
+**기대 동작**:
+- 로그인 후 컨피규레이터 버튼 클릭 가능
+- 컨피규레이터 페이지 접근 가능
+- 3D 렌더링 환경 로드
+
+**재현 빈도**: 100% (항상 발생)
+
+**환경**:
+- 로컬 개발 환경 (localhost:3000)
+- 로그인 계정: seokho@uable.co.kr
+
+## 근본 원인 분석 (Root Cause Analysis)
+
+### Phase 1: 문제 재현 확인
+
+**확인 사항:**
+1. ✅ Story 2.1 상태: "Done" (구현 완료)
+2. ✅ 컨피규레이터 페이지 존재: `/src/app/configurator/page.tsx`
+3. ✅ 3D 컴포넌트 구현: `ThreeCanvas.tsx`, `DeskModel.tsx`
+4. ❌ 메인 페이지 버튼: `disabled` 속성으로 비활성화
+
+### Phase 2: 코드 분석
+
+#### 발견 1: 메인 페이지 버튼 비활성화
+**파일**: `src/app/page.tsx:64-68`
+```typescript
+<button
+  disabled  // ← 문제 지점!
+  className="bg-gray-400 ... cursor-not-allowed"
+>
+  3D 컨피규레이터 (곧 출시)
+</button>
+```
+
+**분석**:
+- 버튼이 의도적으로 `disabled` 처리됨
+- UI 텍스트: "곧 출시" (Coming Soon)
+- Epic 2 완료되었으나 UI 업데이트 누락
+
+#### 발견 2: 인증 미들웨어 정상 작동
+**파일**: `src/lib/auth-middleware.ts:6-11`
+```typescript
+const PROTECTED_ROUTES = [
+  '/profile',
+  '/dashboard',
+  '/configurator', // ← 로그인 필요
+  '/saved-designs',
+]
+```
+
+**분석**:
+- 인증 보호 정상 작동 (정상 동작)
+- 로그인 없이 접근 시 `/login?redirect=/configurator` 리디렉션
+- 보안상 올바른 구현
+
+### Phase 3: Requirements Traceability
+
+**관련 Story**: Story 2.1 - 3D Configurator Foundation
+**Status**: Done (완료)
+
+**Story 2.1 Acceptance Criteria 매핑:**
+
+| AC# | 요구사항 | 구현 상태 | UI 접근성 | 상태 |
+|-----|----------|----------|----------|------|
+| AC1 | Three.js r169 3D 렌더링 환경 | ✅ 구현됨 | ❌ 접근 불가 | **GAP** |
+| AC2 | 3D 카메라 컨트롤 시스템 | ✅ 구현됨 | ❌ 접근 불가 | **GAP** |
+| AC3 | 기본 재료 선택 시스템 | ✅ 구현됨 | ❌ 접근 불가 | **GAP** |
+| AC4 | 치수 조절 기본 시스템 | ✅ 구현됨 | ❌ 접근 불가 | **GAP** |
+| AC5 | 성능 요구사항 (30 FPS) | ✅ 구현됨 | ⚠️ 검증 불가 | **BLOCKED** |
+
+**Coverage Gap**:
+- 백엔드/컴포넌트: 100% 구현 완료
+- 사용자 접근성: 0% (UI 진입점 없음)
+- **심각도**: High (핵심 기능 사용 불가)
+
+### Phase 4: 근본 원인 식별
+
+**원인**: UI 업데이트 누락 (UI Debt)
+
+**시나리오 추정:**
+1. Story 2.1 개발 시 버튼을 "Coming Soon"으로 임시 설정
+2. 개발 완료 후 버튼 활성화 작업 누락
+3. Story 2.1 "Done" 처리되었으나 메인 페이지 업데이트 미반영
+
+**타입**: Configuration Issue (코드 구현은 완료, UI 설정만 누락)
+
+## Risk Assessment
+
+### 비즈니스 리스크
+
+| 리스크 | 확률 | 영향도 | 점수 | 등급 |
+|--------|------|--------|------|------|
+| 사용자가 핵심 기능 발견 못함 | 5/5 | 5/5 | 25 | 🔴 Critical |
+| 개발 완료 기능 미사용 | 5/5 | 4/5 | 20 | 🔴 High |
+| 사용자 혼란 ("곧 출시"인데 완료됨) | 5/5 | 3/5 | 15 | 🟠 Medium |
+
+**총 리스크 점수**: 60/100 (🔴 High-Critical)
+
+### 기술적 리스크
+
+| 항목 | 평가 | 상태 |
+|------|------|------|
+| **Usability** | 0/5 | ❌ FAIL - 접근 불가 |
+| **Discoverability** | 0/5 | ❌ FAIL - 기능 발견 불가 |
+| **UX Consistency** | 2/5 | ⚠️ CONCERNS - 버튼 상태 불일치 |
+| **Implementation** | 5/5 | ✅ PASS - 코드는 정상 |
+
+## NFR Validation
+
+### Usability (사용성)
+- **현재**: ❌ FAIL
+  - 사용자가 완료된 기능에 접근 불가
+  - "곧 출시" 메시지로 혼란 유발
+- **기대**: 로그인 후 1-클릭 접근
+
+### Accessibility (접근성)
+- **현재**: ❌ FAIL
+  - `disabled` 버튼은 스크린 리더에서 혼란
+  - 키보드 네비게이션 불가
+- **기대**: 활성화된 버튼, 명확한 레이블
+
+### UX Consistency (일관성)
+- **현재**: ⚠️ CONCERNS
+  - Story 2.1 "Done"이지만 UI는 "Coming Soon"
+  - 사용자 기대와 실제 상태 불일치
+- **기대**: 개발 상태와 UI 메시지 일치
+
+## 권장 해결 방안
+
+### 🎯 권장 수정 (Option A - Immediate)
+
+**우선순위**: P0 (Critical)
+**작업 시간**: 5분
+**리스크**: Low
+
+**수정 파일**: `src/app/page.tsx:56-69`
+
+**변경 내용**:
+```typescript
+// 현재 (비활성화)
+<button
+  disabled
+  className="bg-gray-400 text-white ... cursor-not-allowed"
+>
+  3D 컨피규레이터 (곧 출시)
+</button>
+
+// 권장 수정 (활성화)
+<button
+  onClick={() => router.push('/configurator')}
+  className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors shadow-lg"
+>
+  3D 컨피규레이터 시작하기
+</button>
+```
+
+**장점**:
+- ✅ 즉시 해결 (5분)
+- ✅ 리스크 없음 (UI만 수정)
+- ✅ 코드 변경 최소화
+- ✅ 사용자 혼란 해소
+
+**단점**:
+- 없음
+
+### 대안 (Option B - Phased Rollout)
+
+**시나리오**: 베타 테스트 후 공개
+
+**변경 내용**:
+```typescript
+<button
+  onClick={() => router.push('/configurator')}
+  className="..."
+>
+  3D 컨피규레이터 (Beta)
+</button>
+```
+
+**장점**: 사용자 기대 관리
+**단점**: Story 2.1 "Done"인데 "Beta" 표시는 혼란
+
+## 테스트 계획
+
+### Test Case 1: 버튼 활성화 확인
+**Priority**: P0
+**Given**: 로그인된 사용자
+**When**: 메인 페이지 접속
+**Then**: "3D 컨피규레이터 시작하기" 버튼 활성화 (초록색)
+
+### Test Case 2: 버튼 클릭 동작
+**Priority**: P0
+**Given**: 활성화된 컨피규레이터 버튼
+**When**: 버튼 클릭
+**Then**: `/configurator` 페이지로 이동
+
+### Test Case 3: 미로그인 상태 리디렉션
+**Priority**: P1
+**Given**: 미로그인 사용자
+**When**: 컨피규레이터 직접 접근 시도
+**Then**: `/login?redirect=/configurator` 리디렉션
+
+### Test Case 4: 3D 렌더링 검증
+**Priority**: P0
+**Given**: 컨피규레이터 페이지 접속
+**When**: 페이지 로드 완료
+**Then**: 3D 책상 모델 렌더링, 30 FPS 이상
+
+### Test Case 5: 재료 선택 동작
+**Priority**: P1
+**Given**: 컨피규레이터 로드됨
+**When**: 재료 옵션 클릭 (Wood/MDF/Steel 등)
+**Then**: 3D 모델 머터리얼 실시간 변경
+
+## QA 권고 사항
+
+### 즉시 조치 (Immediate)
+1. ⚠️ **버튼 활성화 필요** - 사용자 접근성 확보
+2. ⚠️ **텍스트 변경 필요** - "곧 출시" → "시작하기"
+3. ✅ **테스트 실행** - Test Case 1-5 검증
+
+### 단기 (Short-term)
+1. Story 완료 체크리스트에 "UI 진입점 확인" 항목 추가
+2. Done 정의(DoD)에 "사용자 접근 가능" 조건 명시
+
+### 중기 (Medium-term)
+1. Epic 완료 시 전체 사용자 플로우 E2E 테스트
+2. 관리자 페이지에서 기능 플래그 관리 (Feature Flag)
+
+## Gate Decision
+
+**Status**: ⚠️ **CONCERNS** (수정 권장)
+
+**결정 근거**:
+1. ❌ 사용자 접근성 문제 (Critical)
+2. ✅ 기술 구현 완료 (코드는 정상)
+3. ❌ UX 일관성 부족 (Done vs Coming Soon)
+4. ✅ 보안 정상 작동 (인증 미들웨어)
+
+**권고**:
+- **Blocking Issue**: No (기능은 작동함)
+- **User Experience Issue**: Yes (접근 불가)
+- **Priority**: P0 (즉시 수정 권장)
+
+**Next Steps**:
+1. 개발팀에 수정 권고 (Option A)
+2. 수정 후 Test Case 1-5 실행
+3. 검증 완료 시 Gate 업데이트 (CONCERNS → PASS)
+
+## 개발팀 액션 아이템
+
+### 권장 작업
+- [ ] `src/app/page.tsx` 버튼 활성화 (5분)
+- [ ] 로컬 테스트 (브라우저 확인)
+- [ ] QA에게 검증 요청
+
+### 선택 작업
+- [ ] E2E 테스트 추가 (컨피규레이터 접근 플로우)
+- [ ] Storybook에 버튼 상태 추가
+
+---
+
+**QA Review**: Quinn (Test Architect)
+**Date**: 2025-09-30
+**Status**: Analysis Complete - Awaiting Dev Action

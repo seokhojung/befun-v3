@@ -9,6 +9,9 @@ import type {
   MaterialType
 } from '@/types/pricing'
 
+// 재료 타입 상수 배열 (변경되지 않으므로 hook 외부에 정의)
+const MATERIAL_TYPES: MaterialType[] = ['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric']
+
 interface UsePricingOptions {
   debounceMs?: number
   cacheEnabled?: boolean
@@ -245,15 +248,13 @@ export const usePriceComparison = (dimensions: {
 
   const [loading, setLoading] = useState(false)
 
-  const materials: MaterialType[] = ['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric']
-
   const fetchComparisons = useCallback(async () => {
     if (!dimensions) return
 
     setLoading(true)
 
     try {
-      const requests = materials.map(material => ({
+      const requests = MATERIAL_TYPES.map(material => ({
         ...dimensions,
         material,
         use_cache: true,
@@ -288,7 +289,7 @@ export const usePriceComparison = (dimensions: {
       }
 
       results.forEach((calc: any, index: number) => {
-        const material = materials[index]
+        const material = MATERIAL_TYPES[index]
         newComparisons[material] = calc.result
       })
 

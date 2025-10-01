@@ -51,6 +51,11 @@ npm run test -- __tests__/performance/
 # Component tests
 npm run test -- __tests__/components/
 
+# E2E tests (Playwright)
+npm run test:e2e              # Run E2E tests
+npm run test:e2e:ui           # Interactive UI mode
+npm run test:e2e:headed       # With visible browser
+
 # Storybook tests (Vitest)
 npx vitest run
 ```
@@ -90,97 +95,121 @@ OPENAI_API_KEY=your_openai_api_key_here
 ## 프로젝트 구조 및 패턴
 
 ### API 아키텍처
-- **BFF Pattern**: `/api/v1/bff/` - Backend For Frontend endpoints
-- **Versioned APIs**: `/api/v1/` - All business logic APIs
-- **Auth**: `/api/auth/` - Authentication endpoints
-- **Documentation**: `/api/docs/` - Swagger/OpenAPI docs
+- **BFF 패턴**: `/api/v1/bff/` - 프론트엔드를 위한 백엔드 엔드포인트
+- **버전 관리 API**: `/api/v1/` - 모든 비즈니스 로직 API
+- **인증**: `/api/auth/` - 인증 엔드포인트
+- **문서화**: `/api/docs/` - Swagger/OpenAPI 문서
 
 ### 컴포넌트 구조
 ```
 src/components/
-├── ui/           # Reusable UI primitives (shadcn/ui based)
-├── layout/       # Layout components (header, footer, container)
-├── auth/         # Authentication-specific components
-├── form/         # Form components and wrappers
-├── three/        # 3D rendering components (Three.js)
-└── pricing/      # Pricing system components
+├── ui/           # 재사용 가능한 UI 기본 요소 (shadcn/ui 기반)
+├── layout/       # 레이아웃 컴포넌트 (헤더, 푸터, 컨테이너)
+├── auth/         # 인증 관련 컴포넌트
+├── form/         # 폼 컴포넌트 및 래퍼
+├── three/        # 3D 렌더링 컴포넌트 (Three.js)
+├── pricing/      # 가격 시스템 컴포넌트
+├── cart/         # 장바구니 UI 컴포넌트
+├── designs/      # 디자인 관리 컴포넌트
+└── drawing/      # 도면 생성 컴포넌트
 ```
 
 ### 라이브러리 구조
 ```
 src/lib/
-├── api/          # API utilities (auth, validation, errors, rate limiting)
-├── three/        # Three.js utilities (geometry, materials, controls)
-├── pricing/      # Pricing calculation engine
-└── utils.ts      # General utilities
+├── api/          # API 유틸리티 (인증, 검증, 오류 처리, 속도 제한)
+├── three/        # Three.js 유틸리티 (지오메트리, 재질, 컨트롤)
+├── pricing/      # 가격 계산 엔진
+├── cart/         # 장바구니 로직 및 외부 API 연동
+├── drawing/      # PDF 도면 생성 엔진
+├── utils/        # 공유 유틸리티 (재료, 변환 등)
+└── utils.ts      # 일반 유틸리티
 ```
 
 ### 테스트 커버리지 요구사항
-- **Global**: 80% lines, 70% branches/functions
-- **API Routes** (`src/app/api/**`): 90% lines, 80% branches
-- **Libraries** (`src/lib/**`): 95% lines, 85% branches
+- **전체**: 80% 라인, 70% 분기/함수
+- **API 라우트** (`src/app/api/**`): 90% 라인, 80% 분기
+- **라이브러리** (`src/lib/**`): 95% 라인, 85% 분기
 
 ## 스토리 기반 개발 워크플로우
 
 ### 현재 상태
-- **Epic 1**: ✅ Platform infrastructure (Stories 1.1-1.4)
-- **Epic 2**: ✅ 3D configurator core (Stories 2.1-2.2)
-- **Epic 3**: 🔄 Pricing & purchasing integration (Story 3.1 in progress)
-- **Epic 4**: 📋 Design management & drawing generation
-- **Epic 5**: 📋 Extended materials system
+- **Epic 1**: ✅ 플랫폼 인프라 (Stories 1.1-1.4)
+- **Epic 2**: ✅ 3D 컨피규레이터 핵심 (Stories 2.1-2.2, Epic 5 재료 포함)
+- **Epic 3**: ✅ 가격 및 구매 통합 (Story 3.1 완료)
+- **Epic 4**: ✅ 디자인 관리 및 도면 생성 (Story 4.1 완료)
+- **Epic 5**: ✅ 확장 재료 시스템 (Story 2.2에 통합 완료)
+
+**🎉 모든 Epic 완료 - 프로덕션 배포 준비 완료**
+
+### 프로젝트 완료 상태
+**총 구현 스토리: 8개 완료**
+- Epic 1: Stories 1.1-1.4 (플랫폼 인프라) ✅
+- Epic 2: Stories 2.1-2.2 (3D 컨피규레이터, 6개 재료 지원) ✅
+- Epic 3: Story 3.1 (장바구니/결제) ✅
+- Epic 4: Story 4.1 (도면 생성/디자인 관리) ✅
+
+**모든 PRD 요구사항 충족:**
+- ✅ FR1: 3D 컨피규레이터 (재료 6종: 원목, MDF, 스틸, 메탈, 유리, 패브릭)
+- ✅ FR2: 실시간 가격 계산
+- ✅ FR3: 도면 생성 및 다운로드
+- ✅ FR4: 구매 연동
+- ✅ FR5: 계정 관리
 
 ### 스토리 상태
 - **Draft** → **Approved** → **InProgress** → **Review** → **Done**
 
 ### 파일 위치
-- **Stories**: `docs/stories/` - User stories with AC and technical details
-- **PRD**: `docs/prd.md` - Product requirements document
-- **Architecture**: `docs/architecture/` - Technical architecture docs
+- **스토리**: `docs/stories/` - 수락 기준 및 기술 세부사항이 포함된 사용자 스토리
+- **QA Gates**: `docs/qa/gates/` - 각 스토리별 QA 검증 결과
+- **PRD**: `docs/prd.md` - 제품 요구사항 문서
+- **아키텍처**: `docs/architecture/` - 기술 아키텍처 문서
 
 ## 3D 시스템 통합
 
 ### Three.js 컴포넌트
-- **ThreeCanvas**: Main 3D rendering container
-- **DeskModel**: Desk geometry and materials management
-- **Materials**: Wood, MDF, Steel, Metal, Glass, Fabric support
-- **Performance**: 30 FPS minimum on mobile, optimized for Vercel serverless
+- **ThreeCanvas**: 메인 3D 렌더링 컨테이너
+- **DeskModel**: 책상 지오메트리 및 재질 관리
+- **재료**: 원목, MDF, 스틸, 메탈, 유리, 패브릭 지원
+- **성능**: 모바일 최소 30 FPS, Vercel 서버리스에 최적화
 
 ### 가격 시스템 통합
-- **Real-time calculation**: 500ms debouncing for option changes
-- **Volume-based pricing**: width × depth × height × material_modifier
-- **6 materials supported**: wood(1.0), mdf(0.8), steel(1.15), metal(1.5), glass(2.0), fabric(0.8)
+- **실시간 계산**: 옵션 변경 시 500ms 디바운싱
+- **부피 기반 가격**: 너비 × 깊이 × 높이 × 재료_계수
+- **지원 재료 6종**: 원목(1.0), MDF(0.8), 스틸(1.15), 메탈(1.5), 유리(2.0), 패브릭(0.8)
 
 ## 데이터베이스 및 보안
 
 ### Supabase 설정
-- **Authentication**: Row Level Security (RLS) enabled
-- **Core table**: `saved_design` with pricing fields from Story 2.2
-- **New tables**: `pricing_policies`, `purchase_requests` (Story 3.1)
+- **인증**: 행 수준 보안 (RLS) 활성화
+- **핵심 테이블**: `saved_design` (가격, 도면, 장바구니 필드 포함)
+- **추가 테이블**: `pricing_policies`, `purchase_requests`, `drawing_jobs`
+- **Storage**: `drawings` 버킷 (PDF 도면 저장)
 
 ### 보안 정책
-- **RLS**: Users access only their own data
-- **API Security**: Rate limiting (分당 5회 for cart operations)
-- **Validation**: Zod schemas for all API inputs
-- **CSRF**: Token-based protection
+- **RLS**: 사용자는 자신의 데이터만 접근 가능
+- **API 보안**: 장바구니 작업에 대해 분당 5회 속도 제한
+- **검증**: 모든 API 입력에 대한 Zod 스키마
+- **CSRF**: 토큰 기반 보호
 
-## BMad Agent System
+## BMad 에이전트 시스템
 
-This project uses BMad™ agents for development workflow automation:
+이 프로젝트는 개발 워크플로우 자동화를 위해 BMad™ 에이전트를 사용합니다:
 
-### Available Agents
-- **sm** (Scrum Master): Story creation and refinement
-- **po** (Product Owner): Story validation and backlog management
-- **dev** (Developer): Implementation
-- **qa** (QA): Quality assurance and testing
-- **pm** (Project Manager): Project coordination
+### 사용 가능한 에이전트
+- **sm** (스크럼 마스터): 스토리 생성 및 세분화
+- **po** (제품 책임자): 스토리 검증 및 백로그 관리
+- **dev** (개발자): 구현
+- **qa** (품질 보증): 품질 보증 및 테스트
+- **pm** (프로젝트 관리자): 프로젝트 조정
 
-### Agent Usage
+### 에이전트 사용법
 ```bash
-# Activate agents with slash commands
-/BMad:agents:sm    # Story creation
-/BMad:agents:po    # Story validation
-/BMad:agents:dev   # Development
-/BMad:agents:qa    # Quality assurance
+# 슬래시 명령어로 에이전트 활성화
+/BMad:agents:sm    # 스토리 생성
+/BMad:agents:po    # 스토리 검증
+/BMad:agents:dev   # 개발
+/BMad:agents:qa    # 품질 보증
 ```
 
 ### 언어 사용 정책
@@ -189,13 +218,13 @@ This project uses BMad™ agents for development workflow automation:
 - **문서 내용**: 한국어로 작성
 - **기술 용어**: 영어 원문 병기 가능 (예: "인증 시스템 (Authentication System)")
 
-### Agent Files Location
+### 에이전트 파일 위치
 ```
 .bmad-core/
-├── tasks/         # Executable workflows
-├── templates/     # Document templates
-├── checklists/    # Validation checklists
-└── core-config.yaml  # Project configuration
+├── tasks/         # 실행 가능한 워크플로우
+├── templates/     # 문서 템플릿
+├── checklists/    # 검증 체크리스트
+└── core-config.yaml  # 프로젝트 설정
 ```
 
 ### CRITICAL: 절차 준수 원칙
@@ -217,33 +246,33 @@ This project uses BMad™ agents for development workflow automation:
 ## 외부 통합
 
 ### 쇼핑카트 통합 (Epic 3)
-- **Strategy**: Simple redirect model (not complex API integration)
-- **External API**: Redirect to existing shopping mall for payment
-- **Data flow**: Design → Cart API → External shop URL
+- **전략**: 단순 리다이렉트 모델 (복잡한 API 통합 없음)
+- **외부 API**: 결제를 위해 기존 쇼핑몰로 리다이렉트
+- **데이터 흐름**: 디자인 → 장바구니 API → 외부 쇼핑몰 URL
 
 ### API 디자인 패턴
-- **BFF Endpoints**: Aggregate multiple services for frontend
-- **Error Handling**: Standardized error responses with fallbacks
-- **Caching**: Memory caching for pricing policies (1-hour TTL)
+- **BFF 엔드포인트**: 프론트엔드를 위한 여러 서비스 집계
+- **오류 처리**: 폴백이 있는 표준화된 오류 응답
+- **캐싱**: 가격 정책을 위한 메모리 캐싱 (1시간 TTL)
 
 ## 개발 베스트 프랙티스
 
 ### 코드 품질
-- **TypeScript strict mode**: All code must pass strict type checking
-- **ESLint**: Next.js configuration with custom rules
-- **Prettier**: Automatic code formatting
-- **Path aliases**: Use `@/` for src/ imports
+- **TypeScript strict 모드**: 모든 코드는 엄격한 타입 검사를 통과해야 함
+- **ESLint**: 커스텀 규칙이 포함된 Next.js 설정
+- **Prettier**: 자동 코드 포맷팅
+- **경로 별칭**: src/ 임포트에는 `@/` 사용
 
 ### 테스팅 전략
-- **Jest**: Unit tests with Next.js integration and jsdom environment
-- **Vitest**: Storybook integration tests with Playwright browser testing
-- **Testing Library**: React component testing
-- **MSW**: API mocking for integration tests
-- **Performance tests**: Separate test suite for 3D rendering performance
-- **Test timeout**: 10 seconds for complex 3D operations
+- **Jest**: Next.js 통합 및 jsdom 환경의 단위 테스트
+- **Vitest**: Playwright 브라우저 테스팅을 사용한 Storybook 통합 테스트
+- **Testing Library**: React 컴포넌트 테스팅
+- **MSW**: 통합 테스트를 위한 API 모킹
+- **성능 테스트**: 3D 렌더링 성능을 위한 별도 테스트 스위트
+- **테스트 타임아웃**: 복잡한 3D 작업은 10초
 
 ### 성능 요구사항
-- **3D Rendering**: 30 FPS minimum on mobile
-- **API Response**: 500ms maximum for pricing calculations
-- **Cold Start**: Warm-up strategies for serverless functions
-- **Bundle Size**: Code splitting for 3D components
+- **3D 렌더링**: 모바일 최소 30 FPS
+- **API 응답**: 가격 계산 최대 500ms
+- **콜드 스타트**: 서버리스 함수를 위한 웜업 전략
+- **번들 크기**: 3D 컴포넌트를 위한 코드 스플리팅

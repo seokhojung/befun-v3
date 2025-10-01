@@ -10,8 +10,11 @@ jest.mock('@supabase/supabase-js')
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>
 
 // 인증 모의
-jest.mock('@/lib/api/auth')
-const mockValidateAuth = authModule.validateAuth as jest.MockedFunction<typeof authModule.validateAuth>
+jest.mock('@/lib/api/auth', () => ({
+  ...jest.requireActual('@/lib/api/auth'),
+  authenticateRequest: jest.fn(),
+}))
+const mockAuthenticateRequest = authModule.authenticateRequest as jest.MockedFunction<typeof authModule.authenticateRequest>
 
 // 캐시 모의
 jest.mock('@/lib/api/cache', () => ({
@@ -25,7 +28,7 @@ describe('/api/v1/bff/configurator', () => {
 
   beforeEach(() => {
     mockCreateClient.mockReturnValue(mockSupabaseClient as any)
-    mockValidateAuth.mockResolvedValue(createMockAuthContext())
+    mockAuthenticateRequest.mockResolvedValue(createMockAuthContext())
   })
 
   describe('GET /api/v1/bff/configurator', () => {
@@ -137,7 +140,7 @@ describe('/api/v1/bff/configurator', () => {
         },
       })
 
-      mockValidateAuth.mockResolvedValueOnce(premiumUserContext)
+      mockAuthenticateRequest.mockResolvedValueOnce(premiumUserContext)
 
       let callCount = 0
       mockSelect.mockImplementation(() => {
@@ -199,7 +202,7 @@ describe('/api/v1/bff/configurator', () => {
     })
 
     it('인증되지 않은 요청을 거부해야 함', async () => {
-      mockValidateAuth.mockRejectedValueOnce(new Error('Unauthorized'))
+      mockAuthenticateRequest.mockRejectedValueOnce(new Error('Unauthorized'))
 
       const request = new NextRequest('http://localhost:3000/api/v1/bff/configurator')
       const response = await GET(request)
@@ -294,7 +297,7 @@ describe('/api/v1/bff/configurator', () => {
         },
       })
 
-      mockValidateAuth.mockResolvedValueOnce(vipUserContext)
+      mockAuthenticateRequest.mockResolvedValueOnce(vipUserContext)
 
       const vipPricingRules = [
         ...mockPricingRules,

@@ -1,0 +1,202 @@
+# <!-- Powered by BMAD™ Core -->
+# Quality Gate Decision - Story 1.2 User Authentication System
+# Re-review Date: 2025-09-30
+# Previous Gate: PASS (2025-09-26) - Regression detected
+
+schema: 1
+story: "1.2"
+story_title: "사용자 인증 시스템"
+gate: "FAIL"
+status_reason: "회원가입 핵심 기능 장애 및 Critical 보안 취약점 발견. 더미 Supabase 환경으로 인한 실제 API 작동 불가 상태."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-30T00:00:00Z"
+
+# Previous gate for comparison
+previous_gate:
+  date: "2025-09-26T00:00:00Z"
+  status: PASS
+  regression_type: "Production Environment Failure"
+
+# Waiver status
+waiver: { active: false }
+
+# Critical issues found (sorted by severity)
+top_issues:
+  - id: "REL-001"
+    severity: high
+    finding: "회원가입 API 400 Bad Request 에러 - 더미 Supabase 환경으로 실제 DB 미연결"
+    location: "src/app/api/auth/register/route.ts:65-94"
+    suggested_action: "실제 Supabase 프로젝트 연결 또는 개발 환경용 Mock 구현 필요"
+    suggested_owner: "dev"
+
+  - id: "REL-002"
+    severity: high
+    finding: "Session API 401 에러 - 인증되지 않은 정상 사용자에게 에러 반환"
+    location: "src/app/api/auth/session/route.ts:25-32"
+    suggested_action: "토큰 없을 때 200 OK + null 데이터 반환으로 수정"
+    suggested_owner: "dev"
+
+  - id: "SEC-001"
+    severity: high
+    finding: "더미 환경 변수 사용 중 - 프로덕션 코드가 실제 DB 없이 실행 시도"
+    location: ".env.local"
+    suggested_action: "환경별 설정 분리 및 실제 Supabase 프로젝트 연결"
+    suggested_owner: "dev"
+
+  - id: "SEC-002"
+    severity: high
+    finding: "Supabase Admin 클라이언트가 클라이언트 번들에 포함 가능"
+    location: "src/lib/supabase.ts:26-35"
+    suggested_action: "supabaseAdmin을 서버 전용 모듈(supabase-admin.ts)로 분리"
+    suggested_owner: "dev"
+
+  - id: "SEC-003"
+    severity: medium
+    finding: "CORS 와일드카드(*) 사용 - 모든 Origin 허용"
+    location: "src/app/api/auth/session/route.ts:263"
+    suggested_action: "환경별 특정 도메인으로 제한 (localhost:3000 / production URL)"
+    suggested_owner: "dev"
+
+  - id: "ARCH-001"
+    severity: medium
+    finding: "Multiple GoTrueClient 인스턴스 경고 - 두 개의 독립 클라이언트 생성"
+    location: "src/lib/supabase.ts:14-35"
+    suggested_action: "싱글톤 패턴 강화 및 클라이언트/서버 분리"
+    suggested_owner: "dev"
+
+  - id: "TEST-001"
+    severity: medium
+    finding: "E2E 통합 테스트 부족 - 단위 테스트는 통과하나 실제 통합 환경에서 실패"
+    location: "__tests__/api/auth/"
+    suggested_action: "MSW를 활용한 전체 인증 플로우 통합 테스트 추가"
+    suggested_owner: "dev"
+
+  - id: "REL-003"
+    severity: medium
+    finding: "존재하지 않는 테이블 접근 시도 - login_attempts, user_activity_logs"
+    location: "src/app/api/auth/register/route.ts:99-121"
+    suggested_action: "데이터베이스 마이그레이션 파일 적용 (supabase/migrations/)"
+    suggested_owner: "dev"
+
+# Risk assessment summary
+risk_summary:
+  totals:
+    critical: 2  # 회원가입 불가, DB 미연결
+    high: 4      # Session API 401, 보안 취약점들
+    medium: 3    # CORS, Multiple 인스턴스, 테스트 부족
+    low: 0
+  highest_risk_score: 25  # 회원가입 불가 (확률 5 × 영향도 5)
+  overall_risk_level: "CRITICAL"
+  total_risk_score: 81
+
+  recommendations:
+    must_fix:
+      - "Session API 로직 수정: 401 → 200 OK with null data"
+      - "실제 Supabase 프로젝트 연결 또는 개발 Mock 구현"
+      - "Supabase Admin 클라이언트 서버 전용 분리"
+      - "데이터베이스 마이그레이션 적용"
+
+    monitor:
+      - "E2E 테스트 커버리지 지속 확인"
+      - "CORS 정책 환경별 적용 여부"
+      - "Multiple 인스턴스 경고 해결 여부"
+
+# Extended: Evidence from review
+evidence:
+  tests_reviewed: 2
+  files_analyzed: 8
+  apis_tested_manually: 3
+  console_errors_found: 3
+
+  trace:
+    ac_covered: [7]      # AC7만 프로덕션에서 작동 확인
+    ac_failed: [1, 4]    # AC1(회원가입), AC4(세션 지속성) 실패
+    ac_untested: [2, 3, 5, 6, 8]  # 나머지 AC는 프로덕션 미검증
+
+# NFR validation results
+nfr_validation:
+  security:
+    status: FAIL
+    notes: "Critical 취약점 3개 (더미 환경 변수, Admin 클라이언트 노출, CORS 와일드카드)"
+
+  performance:
+    status: CONCERNS
+    notes: "중복 Supabase 클라이언트 인스턴스 생성, 불필요한 API 호출"
+
+  reliability:
+    status: FAIL
+    notes: "회원가입 불가(400 Error), 세션 관리 실패(401 Error), 존재하지 않는 테이블 접근"
+
+  maintainability:
+    status: PASS
+    notes: "코드 구조와 타입 안전성은 여전히 우수"
+
+# Quality score calculation
+# Formula: 100 - (20 × FAILs) - (10 × CONCERNS) - (5 × top_issues.high) - (2 × top_issues.medium)
+# 100 - (20 × 2) - (10 × 1) - (5 × 4) - (2 × 3) = 100 - 40 - 10 - 20 - 6 = 24
+quality_score: 24
+
+# Gate expires after issues are fixed
+expires: "2025-10-07T00:00:00Z"  # 1 week to fix Critical issues
+
+# Actionable recommendations
+recommendations:
+  immediate:  # BLOCKING - Must fix before production
+    - action: "Session API 로직 수정"
+      priority: "P0"
+      refs: ["src/app/api/auth/session/route.ts:25-32"]
+      code_example: |
+        if (!token) {
+          return NextResponse.json({
+            success: true,
+            data: { user: null, session: null }
+          }, { status: 200 })  // ✅ 200 OK instead of 401
+        }
+
+    - action: "Supabase Admin 클라이언트 분리"
+      priority: "P0"
+      refs: ["src/lib/supabase.ts:26-35"]
+      details: "서버 전용 파일(supabase-admin.ts)로 분리하고 // @server-only 주석 추가"
+
+    - action: "개발 환경 Mock 구현 또는 실제 Supabase 연결"
+      priority: "P0"
+      refs: [".env.local", "src/lib/supabase.ts"]
+      details: "더미 환경일 때 Mock Supabase 사용 또는 실제 프로젝트 생성"
+
+    - action: "데이터베이스 마이그레이션 적용"
+      priority: "P0"
+      refs: ["supabase/migrations/20250925_*.sql"]
+      details: "login_attempts, user_activity_logs 테이블 생성"
+
+  future:  # Nice to have - Can be addressed later
+    - action: "CORS 정책 환경별 설정"
+      priority: "P1"
+      refs: ["src/app/api/auth/*/route.ts"]
+
+    - action: "E2E 통합 테스트 추가"
+      priority: "P1"
+      refs: ["__tests__/e2e/auth-flow.test.ts"]
+      details: "MSW로 전체 회원가입 → 로그인 → 로그아웃 플로우 검증"
+
+    - action: "Multiple 인스턴스 경고 해결"
+      priority: "P2"
+      refs: ["src/lib/supabase.ts"]
+
+# Audit history
+history:
+  - at: "2025-09-26T00:00:00Z"
+    gate: PASS
+    note: "초기 QA 검토 완료 - 모든 요구사항 충족, 테스트 커버리지 우수"
+
+  - at: "2025-09-30T00:00:00Z"
+    gate: FAIL
+    note: "프로덕션 환경 테스트 중 회원가입 실패 발견 - Regression Bug"
+    regression_detected: true
+    user_reported: true
+
+# Next steps
+next_steps:
+  - "Dev 에이전트에게 Blocking Issues 수정 요청"
+  - "수정 완료 후 QA 재검증 필요"
+  - "Story Status를 Done → InProgress로 변경 권장"
+  - "수정 후 E2E 테스트 추가하여 재발 방지"

@@ -76,6 +76,10 @@ qa 수정사항 있을시
 
 *dev -> *review-qa
 
+-> qa 재검증 -> dev review-qa로 상태 및 로그 마무리 
+
+
+
 
 
 

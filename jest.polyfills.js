@@ -1,114 +1,93 @@
 // jest.polyfills.js
+// Minimal polyfills that run before jsdom is loaded
+// Most Web API mocks are handled in __tests__/setup.ts which runs after jsdom
+
 import { TextDecoder, TextEncoder } from 'util'
+import { ReadableStream as NodeReadableStream } from 'stream/web'
 
-// Polyfill for Next.js server components
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder
+// Only add basic text encoding polyfills
+// These are safe to add before jsdom loads
+if (typeof global.TextEncoder === 'undefined') {
+  global.TextEncoder = TextEncoder
+}
 
-// Mock fetch for tests
-global.fetch = jest.fn()
+if (typeof global.TextDecoder === 'undefined') {
+  global.TextDecoder = TextDecoder
+}
 
-// Mock Headers
-global.Headers = class Headers {
-  constructor(init) {
-    this.map = new Map()
-    if (init) {
-      if (init instanceof Headers) {
-        init.forEach((value, key) => this.map.set(key, value))
-      } else if (Array.isArray(init)) {
-        init.forEach(([key, value]) => this.map.set(key, value))
-      } else {
-        Object.entries(init).forEach(([key, value]) => this.map.set(key, value))
-      }
+if (typeof global.ReadableStream === 'undefined') {
+  global.ReadableStream = NodeReadableStream
+}
+
+// Minimal Request/Response polyfills
+// jsdom in Node v20 should provide these, but adding fallback
+if (typeof global.Request === 'undefined') {
+  // Simple mock Request class for testing
+  global.Request = class Request {
+    constructor(input, init = {}) {
+      this.url = typeof input === 'string' ? input : input.url
+      this.method = init.method || 'GET'
+      this.headers = new Map(Object.entries(init.headers || {}))
+      this.body = init.body || null
+    }
+    async json() {
+      return this.body ? JSON.parse(this.body) : null
+    }
+    async text() {
+      return this.body || ''
     }
   }
-
-  get(key) { return this.map.get(key) || null }
-  set(key, value) { this.map.set(key, value) }
-  has(key) { return this.map.has(key) }
-  delete(key) { return this.map.delete(key) }
-  forEach(callback) { this.map.forEach((value, key) => callback(value, key, this)) }
 }
 
-// Mock Request
-global.Request = class Request {
-  constructor(input, init = {}) {
-    this.url = typeof input === 'string' ? input : input.url
-    this.method = init.method || 'GET'
-    this.headers = new Headers(init.headers || {})
-    this.body = init.body || null
-    this._bodyUsed = false
-  }
-
-  async json() {
-    if (this._bodyUsed) throw new Error('Body already used')
-    this._bodyUsed = true
-    return this.body ? JSON.parse(this.body) : {}
-  }
-
-  clone() {
-    return new Request(this.url, {
-      method: this.method,
-      headers: this.headers,
-      body: this.body
-    })
-  }
-}
-
-// Mock Response
-global.Response = class Response {
-  constructor(body, init = {}) {
-    this.body = body
-    this.status = init.status || 200
-    this.ok = this.status >= 200 && this.status < 300
-    this.headers = new Headers(init.headers || {})
-  }
-
-  async json() {
-    return typeof this.body === 'string' ? JSON.parse(this.body) : this.body
-  }
-
-  async text() {
-    return typeof this.body === 'string' ? this.body : JSON.stringify(this.body)
-  }
-}
-
-// Mock NextRequest
-global.NextRequest = global.Request
-
-// Mock NextResponse
-global.NextResponse = class NextResponse extends Response {
-  constructor(body, init = {}) {
-    super(body, init)
-    this.cookies = {
-      set: jest.fn(),
-      get: jest.fn(),
-      delete: jest.fn()
+if (typeof global.Response === 'undefined') {
+  global.Response = class Response {
+    constructor(body, init = {}) {
+      this.body = body
+      this.status = init.status || 200
+      this.statusText = init.statusText || 'OK'
+      this.headers = new Map(Object.entries(init.headers || {}))
+      this.ok = this.status >= 200 && this.status < 300
+    }
+    async json() {
+      return this.body ? JSON.parse(this.body) : null
+    }
+    async text() {
+      return this.body || ''
+    }
+    // Static json() method for NextResponse compatibility
+    static json(data, init = {}) {
+      return new Response(JSON.stringify(data), {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(init.headers || {}),
+        },
+      })
     }
   }
+}
 
-  static json(body, init = {}) {
-    return new NextResponse(JSON.stringify(body), {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...init.headers
-      }
-    })
+if (typeof global.Headers === 'undefined') {
+  global.Headers = class Headers extends Map {
+    append(name, value) {
+      this.set(name, value)
+    }
+    get(name) {
+      return super.get(name) || null
+    }
   }
+}
 
-  static redirect(url, init = {}) {
-    return new NextResponse(null, {
-      ...init,
-      status: init.status || 302,
-      headers: {
-        location: url,
-        ...init.headers
-      }
-    })
-  }
-
-  static next() {
-    return new NextResponse(null, { status: 200 })
+if (typeof global.FormData === 'undefined') {
+  global.FormData = class FormData {
+    constructor() {
+      this.data = new Map()
+    }
+    append(name, value) {
+      this.data.set(name, value)
+    }
+    get(name) {
+      return this.data.get(name) || null
+    }
   }
 }

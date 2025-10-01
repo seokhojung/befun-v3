@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { isMockMode } from '@/lib/utils/env-check'
+import { mockGetUser } from '@/lib/utils/mock-auth'
 import type { ApiResponse, AuthResponse } from '@/types/auth'
 
 // 세션 유효성 검증 및 갱신
@@ -22,21 +25,46 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 토큰이 없는 경우는 정상적인 비인증 상태이므로 200 OK 반환
     if (!token) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: {
-          message: '인증 토큰이 없습니다.',
-          code: 'NO_TOKEN'
+      return NextResponse.json<ApiResponse<AuthResponse>>({
+        success: true,
+        data: {
+          user: null,
+          session: null
         }
-      }, { status: 401 })
+      }, { status: 200 })
     }
 
-    // 토큰으로 사용자 정보 가져오기
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
+    // 토큰으로 사용자 정보 가져오기 (Mock 또는 실제)
+    let userData: { user: any }
+    let userError: { message: string } | null = null
+
+    if (isMockMode()) {
+      // Mock 모드: 토큰 검증
+      const mockResult = await mockGetUser(token)
+      userData = mockResult.data
+      userError = mockResult.error
+    } else {
+      // 실제 Supabase
+      const result = await supabase.auth.getUser(token)
+      userData = result.data
+      userError = result.error
+    }
 
     if (userError || !userData.user) {
-      // 토큰이 만료되었거나 유효하지 않은 경우 refresh token 확인
+      // Mock 모드에서는 토큰 만료 시 그냥 null 반환
+      if (isMockMode()) {
+        return NextResponse.json<ApiResponse<AuthResponse>>({
+          success: true,
+          data: {
+            user: null,
+            session: null
+          }
+        }, { status: 200 })
+      }
+
+      // 실제 환경: 토큰이 만료되었거나 유효하지 않은 경우 refresh token 확인
       const refreshToken = request.cookies.get('supabase-refresh-token')?.value
 
       if (refreshToken) {
@@ -259,10 +287,6 @@ export async function HEAD(request: NextRequest) {
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, HEAD, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: getCorsHeaders('GET, POST, HEAD, OPTIONS'),
   })
 }

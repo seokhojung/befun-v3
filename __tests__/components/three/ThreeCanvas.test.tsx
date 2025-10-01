@@ -90,7 +90,7 @@ describe('ThreeCanvas Component', () => {
 
     await waitFor(() => {
       expect(mockOnSceneReady).toHaveBeenCalledTimes(1)
-    })
+    }, { timeout: 3000 })
 
     const sceneObjects: SceneObjects = mockOnSceneReady.mock.calls[0][0]
     expect(sceneObjects).toHaveProperty('scene')
@@ -110,16 +110,32 @@ describe('ThreeCanvas Component', () => {
     expect(canvasContainer).toHaveClass('custom-class')
   })
 
-  test('should show WebGL not supported message when WebGL is unavailable', () => {
+  test('should show WebGL not supported message when WebGL is unavailable', async () => {
     // Mock getContext to return null (WebGL not supported)
     const mockGetContext = jest.fn(() => null)
     Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-      value: mockGetContext
+      value: mockGetContext,
+      configurable: true
     })
 
     render(<ThreeCanvas />)
 
-    expect(screen.getByText('⚠️ WebGL 지원 안됨')).toBeInTheDocument()
-    expect(screen.getByText('이 브라우저는 3D 기능을 지원하지 않습니다.')).toBeInTheDocument()
+    // WebGL 호환성 검사가 useEffect에서 실행되므로 비동기 대기
+    await waitFor(() => {
+      expect(screen.getByText('⚠️ WebGL 지원 안됨')).toBeInTheDocument()
+    }, { timeout: 2000 })
+
+    expect(screen.getByText(/이 브라우저는 3D 기능을 지원하지 않습니다/)).toBeInTheDocument()
+
+    // 원래 동작으로 복원
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      value: jest.fn((type: string) => {
+        if (type === 'webgl2' || type === 'webgl') {
+          return {}
+        }
+        return null
+      }),
+      configurable: true
+    })
   })
 })

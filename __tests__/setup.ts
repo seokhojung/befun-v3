@@ -12,36 +12,59 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key'
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder as any
 
-// Node.js 환경에서 jsdom 사용 시 필요한 Web API 모의
-if (typeof global.Request === 'undefined') {
-  global.Request = class MockRequest {
-    constructor(public url: string, public init: any = {}) {}
-    json() { return Promise.resolve(JSON.parse(this.init.body || '{}')) }
-    text() { return Promise.resolve(this.init.body || '') }
-    headers = new Map()
-    method = this.init.method || 'GET'
-    nextUrl = { searchParams: new URLSearchParams() }
-    cookies = { get: jest.fn() }
+// jsdom provides Request, Response, Headers
+// Only mock NextRequest and NextResponse for Next.js compatibility
+
+if (typeof global.NextRequest === 'undefined') {
+  global.NextRequest = class MockNextRequest extends Request {
+    constructor(url: string, init: any = {}) {
+      super(url, init)
+      this.nextUrl = { searchParams: new URLSearchParams(url.split('?')[1] || '') } as any
+      this.cookies = {
+        get: jest.fn(),
+        getAll: jest.fn(() => []),
+        set: jest.fn(),
+        delete: jest.fn(),
+      } as any
+    }
+    nextUrl: any
+    cookies: any
   } as any
 }
 
-global.Response = class MockResponse {
-  constructor(public body?: any, public init: any = {}) {}
-  static json(data: any, init?: any) {
-    return new MockResponse(JSON.stringify(data), {
-      ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers }
-    })
-  }
-  json() { return Promise.resolve(JSON.parse(this.body || '{}')) }
-  text() { return Promise.resolve(this.body || '') }
-  get status() { return this.init.status || 200 }
-  get headers() {
-    return new Map(Object.entries(this.init.headers || {}))
-  }
-} as any
+if (typeof global.NextResponse === 'undefined') {
+  global.NextResponse = class MockNextResponse extends Response {
+    constructor(body?: any, init: any = {}) {
+      super(body, init)
+      this.cookies = {
+        set: jest.fn(),
+        get: jest.fn(),
+        delete: jest.fn(),
+      } as any
+    }
 
-global.Headers = Map as any
+    static json(data: any, init?: any) {
+      return new MockNextResponse(JSON.stringify(data), {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...init?.headers }
+      })
+    }
+
+    static redirect(url: string, init?: any) {
+      return new MockNextResponse(null, {
+        ...init,
+        status: init?.status || 302,
+        headers: { Location: url, ...init?.headers }
+      })
+    }
+
+    static next() {
+      return new MockNextResponse(null, { status: 200 })
+    }
+
+    cookies: any
+  } as any
+}
 
 // 전역 모의(Mock) 설정
 global.crypto = {
@@ -67,10 +90,9 @@ global.console = {
   error: jest.fn(),
 }
 
-// Date 모의 (일관된 타임스탬프)
-const mockDate = new Date('2024-01-01T00:00:00.000Z')
-jest.spyOn(global, 'Date').mockImplementation(() => mockDate)
-Date.now = jest.fn(() => mockDate.getTime())
+// Date.now 모의 (일관된 타임스탬프)
+const mockTimestamp = new Date('2024-01-01T00:00:00.000Z').getTime()
+Date.now = jest.fn(() => mockTimestamp)
 
 // cleanup 함수
 afterEach(() => {
