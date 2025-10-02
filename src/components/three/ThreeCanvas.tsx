@@ -18,6 +18,19 @@ export default function ThreeCanvas({ onSceneReady, onPerformanceUpdate, classNa
   const [error, setError] = useState<string | null>(null)
   const sceneObjectsRef = useRef<SceneObjects | null>(null)
 
+  // Store latest callbacks in refs to avoid useEffect re-runs
+  const onSceneReadyRef = useRef(onSceneReady)
+  const onPerformanceUpdateRef = useRef(onPerformanceUpdate)
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onSceneReadyRef.current = onSceneReady
+  }, [onSceneReady])
+
+  useEffect(() => {
+    onPerformanceUpdateRef.current = onPerformanceUpdate
+  }, [onPerformanceUpdate])
+
   useEffect(() => {
     if (!mountRef.current) return
 
@@ -94,9 +107,9 @@ export default function ThreeCanvas({ onSceneReady, onPerformanceUpdate, classNa
 
       sceneObjectsRef.current = sceneObjects
 
-      // 부모 컴포넌트에 씬 객체 전달
-      if (onSceneReady) {
-        onSceneReady(sceneObjects)
+      // 부모 컴포넌트에 씬 객체 전달 (ref 사용으로 stale closure 방지)
+      if (onSceneReadyRef.current) {
+        onSceneReadyRef.current(sceneObjects)
       }
 
       // 성능 모니터링 설정
@@ -106,10 +119,10 @@ export default function ThreeCanvas({ onSceneReady, onPerformanceUpdate, classNa
       function animate() {
         requestAnimationFrame(animate)
 
-        // 성능 메트릭 업데이트
+        // 성능 메트릭 업데이트 (ref 사용으로 stale closure 방지)
         const metrics = performanceMonitor.update()
-        if (onPerformanceUpdate) {
-          onPerformanceUpdate(metrics)
+        if (onPerformanceUpdateRef.current) {
+          onPerformanceUpdateRef.current(metrics)
         }
 
         controls.update()
@@ -150,7 +163,9 @@ export default function ThreeCanvas({ onSceneReady, onPerformanceUpdate, classNa
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
       setWebglSupported(false)
     }
-  }, [onSceneReady, onPerformanceUpdate])
+    // Empty dependency array: only run once on mount
+    // Callbacks are accessed via refs to avoid re-runs
+  }, [])
 
   if (webglSupported === false) {
     return (

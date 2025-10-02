@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSWR } from 'swr'
+import useSWR from 'swr'
 import { useDebounce } from '@/hooks/use-debounce'
 import type {
   PriceCalculationRequest,
@@ -160,17 +160,30 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
     if (swrError) {
       const errorMessage = swrError.message || '가격 계산 중 오류가 발생했습니다'
       setError(errorMessage)
-      setRetryCount(prev => prev + 1)
+      setRetryCount(prev => {
+        const newCount = prev + 1
 
-      // 네트워크 오류인 경우 fallback 가격 계산
-      if (debouncedRequest && (errorMessage.includes('fetch') || networkStatus === 'offline')) {
-        const fallback = calculateFallbackPrice(debouncedRequest)
-        setFallbackPrice(fallback)
-        setIsUsingFallback(true)
-      } else if (previousPrice) {
-        // 네트워크 오류가 아닌 경우 이전 가격 유지
-        setFallbackPrice(previousPrice.total)
-        setIsUsingFallback(true)
+        // 연속 5회 실패 시 재시도 중단
+        if (newCount >= 5) {
+          console.error('Price calculation failed 5 times, stopping retries')
+          return newCount
+        }
+
+        return newCount
+      })
+
+      // 재시도 제한에 도달하지 않은 경우에만 fallback 처리
+      if (retryCount < 5) {
+        // 네트워크 오류인 경우 fallback 가격 계산
+        if (debouncedRequest && (errorMessage.includes('fetch') || networkStatus === 'offline')) {
+          const fallback = calculateFallbackPrice(debouncedRequest)
+          setFallbackPrice(fallback)
+          setIsUsingFallback(true)
+        } else if (previousPrice) {
+          // 네트워크 오류가 아닌 경우 이전 가격 유지
+          setFallbackPrice(previousPrice.total)
+          setIsUsingFallback(true)
+        }
       }
 
       onError?.(swrError)
@@ -179,7 +192,7 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
       setRetryCount(0)
       setIsUsingFallback(false)
     }
-  }, [swrError, onError, debouncedRequest, networkStatus, previousPrice, calculateFallbackPrice])
+  }, [swrError, onError, debouncedRequest, networkStatus, previousPrice, calculateFallbackPrice, retryCount])
 
   // 로딩 상태 관리
   useEffect(() => {
@@ -196,7 +209,8 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
       onPriceChange(priceData, previousPrice)
       setPreviousPrice(priceData)
     }
-  }, [priceData, onPriceChange, previousPrice])
+    // previousPrice를 의존성에서 제거 - 무한 루프 방지
+  }, [priceData, onPriceChange])
 
   // 가격 계산 함수
   const calculatePrice = useCallback(async (request: PriceCalculationRequest) => {

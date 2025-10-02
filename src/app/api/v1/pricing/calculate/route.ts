@@ -144,18 +144,17 @@ async function handleSingleCalculation(
   requestId: string,
   timer: RequestTimer
 ): Promise<NextResponse> {
-  // 요청 데이터 검증
-  const validatedData = validateRequestBody(body, priceCalculationSchema, requestId)
-
-  logger.info('Single price calculation request', requestId, {
-    dimensions: `${validatedData.width_cm}x${validatedData.depth_cm}x${validatedData.height_cm}`,
-    material: validatedData.material
-  })
-
-  const startTime = Date.now()
-  let cacheHit = false
-
   try {
+    // 요청 데이터 검증 (이미 파싱된 body 사용)
+    const validatedData = priceCalculationSchema.parse(body)
+
+    logger.info('Single price calculation request', requestId, {
+      dimensions: `${validatedData.width_cm}x${validatedData.depth_cm}x${validatedData.height_cm}`,
+      material: validatedData.material
+    })
+
+    const startTime = Date.now()
+    let cacheHit = false
     let result
 
     // 캐시 확인
@@ -170,12 +169,21 @@ async function handleSingleCalculation(
 
     // 캐시 미스 시 계산 수행
     if (!result) {
+      // PriceCalculationRequest로 변환 (use_cache, estimate_only 제외)
+      const priceRequest = {
+        width_cm: validatedData.width_cm,
+        depth_cm: validatedData.depth_cm,
+        height_cm: validatedData.height_cm,
+        material: validatedData.material,
+        options: validatedData.options
+      }
+
       if (validatedData.estimate_only) {
         // 빠른 추정 모드 (동기 계산)
-        result = PricingAPI.calculatePriceEstimate(validatedData)
+        result = PricingAPI.calculatePriceEstimate(priceRequest)
       } else {
         // 정확한 계산 (비동기, DB 조회)
-        result = await PricingAPI.calculatePrice(validatedData)
+        result = await PricingAPI.calculatePrice(priceRequest)
       }
 
       // 캐시 저장
@@ -208,7 +216,17 @@ async function handleSingleCalculation(
     return response
 
   } catch (error) {
-    const calculationTime = Date.now() - startTime
+    // Zod validation 에러 처리
+    if (error instanceof z.ZodError) {
+      logger.warn('Request validation failed', requestId, {
+        errors: error.errors
+      })
+      timer.complete(400)
+      return createErrorResponse(
+        new Error(`유효하지 않은 요청: ${error.errors.map(e => e.message).join(', ')}`),
+        requestId
+      )
+    }
 
     if (error instanceof PriceCalculationError) {
       logger.warn('Price calculation validation error', requestId, {
@@ -222,8 +240,7 @@ async function handleSingleCalculation(
     }
 
     logger.error('Price calculation failed', requestId, {
-      error,
-      calculationTime
+      error
     })
 
     timer.complete(500)
@@ -240,18 +257,17 @@ async function handleBatchCalculation(
   requestId: string,
   timer: RequestTimer
 ): Promise<NextResponse> {
-  // 요청 데이터 검증
-  const validatedData = validateRequestBody(body, batchCalculationSchema, requestId)
-
-  logger.info('Batch price calculation request', requestId, {
-    count: validatedData.calculations.length
-  })
-
-  const startTime = Date.now()
-  let cacheHits = 0
-  let cacheMisses = 0
-
   try {
+    // 요청 데이터 검증 (이미 파싱된 body 사용)
+    const validatedData = batchCalculationSchema.parse(body)
+
+    logger.info('Batch price calculation request', requestId, {
+      count: validatedData.calculations.length
+    })
+
+    const startTime = Date.now()
+    let cacheHits = 0
+    let cacheMisses = 0
     const results: SingleCalculationResponse[] = []
 
     // 순차적으로 계산 (병렬 처리 시 DB 부하 고려)
@@ -272,10 +288,19 @@ async function handleBatchCalculation(
 
       // 캐시 미스 시 계산
       if (!result) {
+        // PriceCalculationRequest로 변환 (use_cache, estimate_only 제외)
+        const priceRequest = {
+          width_cm: calculation.width_cm,
+          depth_cm: calculation.depth_cm,
+          height_cm: calculation.height_cm,
+          material: calculation.material,
+          options: calculation.options
+        }
+
         if (calculation.estimate_only) {
-          result = PricingAPI.calculatePriceEstimate(calculation)
+          result = PricingAPI.calculatePriceEstimate(priceRequest)
         } else {
-          result = await PricingAPI.calculatePrice(calculation)
+          result = await PricingAPI.calculatePrice(priceRequest)
         }
 
         if (validatedData.use_cache) {
@@ -320,11 +345,20 @@ async function handleBatchCalculation(
     return response
 
   } catch (error) {
-    const totalCalculationTime = Date.now() - startTime
+    // Zod validation 에러 처리
+    if (error instanceof z.ZodError) {
+      logger.warn('Batch request validation failed', requestId, {
+        errors: error.errors
+      })
+      timer.complete(400)
+      return createErrorResponse(
+        new Error(`유효하지 않은 요청: ${error.errors.map(e => e.message).join(', ')}`),
+        requestId
+      )
+    }
 
     logger.error('Batch price calculation failed', requestId, {
-      error,
-      totalCalculationTime
+      error
     })
 
     timer.complete(500)
@@ -352,8 +386,12 @@ async function handleGet(request: NextRequest) {
 
     if (action === 'materials') {
       const materials = await PricingAPI.policies.getAll()
+
+      // 방어적 처리: materials가 undefined 또는 배열이 아닐 경우 빈 배열 사용
+      const safeMaterials = Array.isArray(materials) ? materials : []
+
       return createSuccessResponse({
-        materials: materials.map(policy => ({
+        materials: safeMaterials.map(policy => ({
           type: policy.material_type,
           base_price_per_m3: policy.base_price_per_m3,
           price_modifier: policy.price_modifier,

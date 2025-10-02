@@ -1,0 +1,237 @@
+schema: 1
+story: '1.2C'
+story_title: 'React 무한 루프 디버깅 및 데이터 마이그레이션 - Epic 2 Technical Debt Resolution'
+gate: CONCERNS
+status_reason: 'Dev 무한 루프 수정 완료 추정, 하지만 브라우저 검증 미완료. 새로운 Pricing API 500 에러 발견 (Story 범위 외, 별도 Story 필요).'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-02T06:45:00.000Z'
+
+top_issues:
+  - severity: high
+    category: 'OUT-OF-SCOPE-001'
+    title: 'Pricing API 단위 변환 누락 - Story 2.2 범위'
+    description: |
+      ConfiguratorUI.tsx에서 calculatePrice() 호출 시 미터(m) 단위를 cm 단위로
+      변환하지 않고 그대로 전달. API는 1.2cm를 받지만 실제로는 120cm를 보내야 함.
+
+      결과: Zod validation 통과 후 PricingAPI.calculatePrice() 실패 → 500 에러
+    files:
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:178-180'
+      - 'src/app/api/v1/pricing/calculate/route.ts:149 (validation)'
+    suggested_owner: 'dev'
+    evidence: |
+      서버 로그:
+      [2025-10-02T06:39:10.299Z] WARN Request validation failed { errors: undefined }
+      API Error: TypeError: Cannot read properties of undefined (reading 'map')
+      POST /api/v1/pricing/calculate 500 (Internal Server Error)
+
+      브라우저 콘솔:
+      use-pricing.ts:38  POST http://localhost:3000/api/v1/pricing/calculate 500
+    scope_assessment: |
+      ❌ Story 1.2C 범위 외
+      - Story 1.2C: "React 무한 루프 디버깅" + "user_profiles 마이그레이션"
+      - 이 이슈: Pricing API 로직 버그 (Story 2.2 "실시간 가격 계산 시스템")
+      - 별도 Story 필요: Story 2.2A (Pricing API 버그 수정)
+
+  - severity: medium
+    category: 'OUT-OF-SCOPE-002'
+    title: 'Pricing API 에러 처리 버그 - error.errors undefined'
+    description: |
+      route.ts Line 226에서 error.errors.map() 호출 시 error.errors가 undefined인
+      경우 처리 안 됨. 400 Bad Request 대신 500 Internal Server Error 반환.
+    files:
+      - 'src/app/api/v1/pricing/calculate/route.ts:220-228'
+    suggested_owner: 'dev'
+    evidence: |
+      Line 226: error.errors.map(e => e.message).join(', ')
+      → error.errors가 undefined면 TypeError 발생
+    scope_assessment: |
+      ❌ Story 1.2C 범위 외 (Story 2.2 범위)
+
+  - severity: low
+    category: 'VERIFICATION-001'
+    title: '무한 루프 수정 브라우저 검증 미완료'
+    description: |
+      Dev Agent가 무한 루프 수정을 완료했다고 보고했으나, 실제 브라우저에서
+      /configurator 페이지 로드 테스트를 수행하지 않았음.
+
+      현재 상태: TypeScript type-check, ESLint, dev server 시작 모두 통과
+      필요 검증: 브라우저에서 "Maximum update depth exceeded" 에러 미발생 확인
+    files:
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:161-188 (수정됨)'
+      - 'src/app/configurator/components/ControlPanel.tsx:145, 178, 211 (수정됨)'
+    suggested_owner: 'dev'
+    scope_assessment: |
+      ✅ Story 1.2C 범위 내
+      - AC 1, 2 검증 필요
+
+waiver:
+  active: false
+
+quality_score: 60  # CONCERNS: 100 - (범위 외 이슈 2개 -20) - (검증 미완료 -20)
+expires: '2025-10-16T06:45:00.000Z'
+
+evidence:
+  tests_reviewed: 0  # E2E 테스트 미실행, 브라우저 수동 테스트 미완료
+  risks_identified: 3
+  trace:
+    ac_covered: [3, 4, 10]  # user_profiles, BFF API (일부), 문서화 (부분)
+    ac_gaps: [1, 2, 5, 6, 7, 8, 9, 11, 12]  # 무한 루프 브라우저 검증 미완료
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'API 인증, RLS 정책 정상. 보안 관련 변경 없음.'
+  performance:
+    status: CONCERNS
+    notes: |
+      무한 루프 수정은 완료된 것으로 추정되나 브라우저 검증 미완료.
+      Pricing API 500 에러로 인한 불필요한 재시도 발생 (범위 외).
+  reliability:
+    status: CONCERNS
+    notes: |
+      무한 루프 수정 완료 추정, 하지만 브라우저 검증 없음.
+      Pricing API 500 에러로 가격 계산 완전 실패 (범위 외).
+  maintainability:
+    status: PASS
+    notes: 'Dev의 useRef + useCallback 패턴 수정이 적절함. Stale closure 리스크 해결.'
+
+recommendations:
+  immediate:  # Story 1.2C 범위 내 - Dev 에이전트가 즉시 수행
+    - action: '브라우저 수동 테스트로 무한 루프 수정 검증'
+      priority: 'P0-BLOCKER'
+      refs: ['http://localhost:3000/configurator']
+      details: |
+        1. npm run dev 실행
+        2. 브라우저에서 /configurator 접속
+        3. "Maximum update depth exceeded" 에러 미발생 확인
+        4. Error Boundary 미표시 확인
+        5. Slider 드래그 시 무한 루프 미발생 확인
+
+        예상 결과: 페이지 정상 로드, 3D 씬 표시
+
+  out_of_scope:  # Story 1.2C 범위 외 - 별도 Story 생성 권장
+    - action: 'Story 2.2A 생성: Pricing API 버그 수정'
+      priority: 'P0-BLOCKER (Epic 2 전체)'
+      story_scope: |
+        Title: "Pricing API 단위 변환 및 에러 처리 버그 수정"
+
+        Issues to fix:
+        1. ConfiguratorUI.tsx Line 178-180: m → cm 변환 추가
+           calculatePriceRef.current({
+             width_cm: settings.dimensions.width * 100,
+             depth_cm: settings.dimensions.depth * 100,
+             height_cm: settings.dimensions.height * 100,
+             ...
+           })
+
+        2. route.ts Line 220-228: error.errors undefined 처리
+           const errorMessage = error.errors?.map(e => e.message).join(', ') || 'Validation failed'
+           return createErrorResponse(new Error(`유효하지 않은 요청: ${errorMessage}`), requestId)
+
+        Acceptance Criteria:
+        - POST /api/v1/pricing/calculate가 올바른 가격 반환
+        - error.errors undefined 시 500 대신 400 반환
+        - 브라우저 콘솔에 Pricing API 에러 없음
+
+  future:
+    - action: 'Playwright E2E 테스트 작성'
+      priority: 'medium'
+      refs: ['__tests__/e2e/configurator/infinite-loop-fix.e2e.test.tsx']
+      details: |
+        무한 루프 회귀 방지를 위한 자동화 테스트
+        - 페이지 로드 시 "Maximum update depth" 에러 미발생
+        - Slider 드래그 시 무한 루프 미발생
+        - 성능 메트릭 수집 (CPU, 메모리)
+
+root_cause_analysis: |
+  ## Story 1.2C 브라운필드 디버깅 세션 분석
+
+  ### 발견된 이슈
+
+  **1. 무한 루프 수정 상태 (Story 1.2C 범위 내)**
+  - Dev Agent가 useRef + useCallback 패턴으로 수정 완료
+  - TypeScript, ESLint, dev server 모두 통과
+  - **하지만 브라우저 수동 테스트 미수행** ← 검증 Gap
+
+  **2. Pricing API 500 에러 (Story 1.2C 범위 외)**
+  - ConfiguratorUI.tsx에서 미터(m) 단위를 cm로 착각하여 API 호출
+  - settings.dimensions.width = 1.2m → API에 1.2cm로 전달 (❌ 120cm여야 함)
+  - Zod validation은 통과 (숫자 타입 맞음, 범위도 min:1 통과)
+  - PricingAPI.calculatePrice() 실패 → 500 에러
+  - **이는 Story 2.2 (가격 계산 시스템) 범위의 버그**
+
+  **3. 에러 처리 버그 (Story 1.2C 범위 외)**
+  - route.ts Line 226: error.errors.map() 호출
+  - error.errors가 undefined인 경우 TypeError 발생
+  - 400 Bad Request 대신 500 Internal Server Error 반환
+
+  ### 서버/클라이언트 로그 분석
+
+  **서버 터미널 로그:**
+  ```
+  [06:39:10.299Z] WARN Request validation failed { errors: undefined }
+  API Error: TypeError: Cannot read properties of undefined (reading 'map')
+      at handleSingleCalculation (route.ts:194:127)
+  POST /api/v1/pricing/calculate 500 in 323ms
+  ```
+
+  **브라우저 콘솔 로그:**
+  ```
+  use-pricing.ts:38  POST http://localhost:3000/api/v1/pricing/calculate 500 (Internal Server Error)
+  ```
+
+  ### Story 1.2C vs 범위 외 이슈 구분
+
+  **Story 1.2C 범위 내:**
+  ✅ React 무한 루프 디버깅 → Dev 수정 완료 (검증 필요)
+  ✅ user_profiles 마이그레이션 → PO 완료
+
+  **Story 1.2C 범위 외 (Story 2.2 범위):**
+  ❌ Pricing API 단위 변환 누락 → 별도 Story 2.2A 필요
+  ❌ Pricing API 에러 처리 버그 → Story 2.2A에 포함
+
+  ### 권장 조치
+
+  1. **즉시 (Story 1.2C)**: 브라우저 수동 테스트로 무한 루프 수정 검증
+  2. **별도 Story (2.2A)**: Pricing API 버그 수정 Story 생성 및 수행
+
+test_results:
+  - test: 'Browser Manual Test (무한 루프)'
+    result: NOT_EXECUTED
+    notes: 'Dev가 수동 테스트를 수행하지 않았음. 검증 필요.'
+  - test: 'Pricing API Call'
+    result: FAIL
+    notes: '500 Internal Server Error (범위 외 이슈)'
+  - test: 'BFF Configurator API'
+    result: PASS
+    notes: '200 OK, 6개 재료 반환'
+  - test: 'user_profiles Record'
+    result: PASS
+    notes: 'PO가 수동 생성 완료'
+  - test: 'TypeScript type-check'
+    result: PASS
+    notes: 'Dev 수정 후 타입 에러 없음'
+  - test: 'ESLint'
+    result: PASS
+    notes: 'Dev 수정 후 경고 없음 (use-pricing.ts 의존성 수정됨)'
+
+resolution_status: |
+  **Status**: ⚠️ CONCERNS - 브라우저 검증 필요 + 범위 외 이슈 발견
+
+  **Story 1.2C 다음 단계:**
+  1. Dev/사용자가 브라우저 수동 테스트 수행
+  2. 무한 루프 미발생 확인 시 → Story 1.2C Done
+
+  **범위 외 이슈 다음 단계:**
+  1. SM 에이전트가 Story 2.2A 생성
+  2. Dev 에이전트가 Pricing API 버그 수정
+  3. QA 에이전트가 재검증
+
+  **예상 소요 시간**:
+  - Story 1.2C 검증: 10분 (브라우저 테스트)
+  - Story 2.2A 수정: 2-3시간 (단위 변환 + 에러 처리)
+
+  **Critical Path**:
+  - 브라우저 테스트 → 무한 루프 PASS 확인 → Story 1.2C Done
+  - Story 2.2A 생성 → Pricing API 수정 → 재검증 → Done

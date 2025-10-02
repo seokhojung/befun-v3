@@ -7,7 +7,7 @@ import { validateQueryParams, CommonSchemas } from '@/lib/api/validation'
 import { checkBffRateLimit, getRateLimitHeaders } from '@/lib/api/rate-limiter'
 import { processApiVersion } from '@/lib/api/version'
 import { RequestTimer, logger } from '@/lib/api/logger'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { PricingAPI } from '@/lib/pricing'
 
 // BFF 컨피규레이터 응답 타입
@@ -113,7 +113,7 @@ async function handleGet(request: NextRequest) {
     })
 
     // 사용자 정보 및 구독 상태 조회
-    const { data: userProfile, error: userError } = await supabase
+    const { data: userProfile, error: userError } = await supabaseAdmin
       .from('user_profiles')
       .select('subscription_tier, design_quota_used, design_quota_limit, ui_preferences')
       .eq('id', authContext.user.id)
@@ -198,7 +198,7 @@ async function handleGet(request: NextRequest) {
 
     // 재료 정보 조회 (옵션)
     if (queryParams.include_materials) {
-      const { data: materials, error: materialsError } = await supabase
+      const { data: materials, error: materialsError } = await supabaseAdmin
         .from('materials')
         .select('id, name, type, price_per_unit, availability, thumbnail_url')
         .eq('availability', true)
@@ -211,7 +211,7 @@ async function handleGet(request: NextRequest) {
 
     // 저장된 디자인 조회 (옵션)
     if (queryParams.include_designs) {
-      const { data: designs, error: designsError } = await supabase
+      const { data: designs, error: designsError } = await supabaseAdmin
         .from('saved_designs')
         .select(`
           id,

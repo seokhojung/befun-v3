@@ -312,6 +312,11 @@ export function checkBffRateLimit(request: NextRequest, requestId?: string): Rat
   return checkRateLimit(request, CONFIG.RATE_LIMITS.BFF, requestId)
 }
 
+// API 엔드포인트용 Rate Limit 체크 (checkApiRateLimit alias)
+export function checkApiRateLimit(request: NextRequest, requestId?: string): RateLimitResult {
+  return checkDefaultRateLimit(request, requestId)
+}
+
 // Rate Limit 헤더 설정 유틸리티
 export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
   const headers: Record<string, string> = {

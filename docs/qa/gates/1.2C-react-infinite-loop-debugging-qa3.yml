@@ -1,0 +1,244 @@
+schema: 1
+story: '1.2C'
+story_title: 'React 무한 루프 디버깅 및 데이터 마이그레이션 - Epic 2 Technical Debt Resolution'
+gate: FAIL
+status_reason: 'Radix UI Slider 컴포넌트의 무한 루프가 여전히 발생. QA 에이전트의 이전 수정(Hook 의존성 배열)만으로는 불충분. ControlPanel의 Slider onValueChange 핸들러가 근본 원인.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-02T06:00:00.000Z'
+
+top_issues:
+  - severity: high
+    category: 'BLOCKER-002'
+    title: 'Radix UI Slider 무한 루프 - ControlPanel'
+    description: |
+      Slider의 onValueChange → handleDimensionChange → onSettingsChange →
+      ConfiguratorUI 리렌더 → ControlPanel 리렌더 → Slider value prop 변경 →
+      onValueChange 재트리거 → 무한 루프
+    files:
+      - 'src/app/configurator/components/ControlPanel.tsx:116-125, 149-157, 182-190'
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:34-92'
+    suggested_owner: 'dev'
+    evidence: |
+      콘솔 에러: "Maximum update depth exceeded"
+      스택트레이스: index.mjs:466:126 at Slider → ControlPanel.tsx:26:11
+      Error Boundary가 캐치했으나 UI가 표시되지 않음
+
+  - severity: medium
+    category: 'QA-VIOLATION'
+    title: 'BMad Method 워크플로우 위반 - QA가 코드 직접 수정'
+    description: |
+      QA 에이전트(Quinn)가 이전 리뷰에서 코드를 직접 수정했으나 문제 미해결.
+      올바른 절차: QA 분석 → Gate FAIL → Dev 수정 → QA 재검증
+    files:
+      - 'src/app/api/v1/pricing/calculate/route.ts:388-401 (QA 수정)'
+      - 'src/hooks/use-pricing.ts:193-200, 159-195 (QA 수정)'
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:175-182 (QA 수정)'
+    suggested_owner: 'sm'
+    evidence: |
+      Story 파일 QA Results 섹션에서 "QA 3차 리뷰에서 수행한 리팩토링" 명시됨.
+      review-story.md의 "Active Refactoring" 조항을 과도하게 해석.
+
+  - severity: low
+    category: 'TEST-001'
+    title: 'E2E 테스트 불완전'
+    description: 'E2E 테스트 스크립트가 API만 검증하고 실제 브라우저 렌더링 미검증'
+    files:
+      - 'scripts/test-infinite-loop-fix-v2.mjs'
+    suggested_owner: 'qa'
+
+waiver:
+  active: false
+
+quality_score: 30  # FAIL: 70점 감점 (BLOCKER 1개 -50, QA 위반 -20)
+expires: '2025-10-16T06:00:00.000Z'
+
+evidence:
+  tests_reviewed: 1  # E2E 스크립트 1개 (불완전)
+  risks_identified: 2  # BLOCKER-002, QA-VIOLATION
+  trace:
+    ac_covered: [3, 4, 5, 6, 8]  # BFF API, 인증, 데이터베이스만 충족
+    ac_gaps: [1, 2, 7, 9, 10, 11, 12]  # 무한 루프 관련 AC 미충족
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'API 보안, 인증, RLS 정책 모두 정상'
+  performance:
+    status: FAIL
+    notes: '무한 루프로 인한 CPU 100% 사용, 브라우저 크래시'
+  reliability:
+    status: FAIL
+    notes: 'Configurator UI가 전혀 표시되지 않음, Error Boundary만 표시'
+  maintainability:
+    status: CONCERNS
+    notes: 'QA가 수정한 코드가 문제를 해결하지 못함, 근본 원인 재분석 필요'
+
+recommendations:
+  immediate:  # Dev 에이전트가 즉시 수정해야 함
+    - action: 'ControlPanel Slider controlled component 패턴 수정'
+      priority: 'P0-BLOCKER'
+      refs: ['src/app/configurator/components/ControlPanel.tsx:40-95']
+      details: |
+        문제: Slider의 value prop과 onValueChange 핸들러가 무한 루프 생성
+
+        해결 방법 옵션:
+        A) useRef + useEffect로 Slider value 안정화
+           - localDimensions를 useRef로 관리
+           - onValueChange에서는 ref만 업데이트
+           - useEffect로 디바운싱 후 onSettingsChange 호출
+
+        B) useDeferredValue로 Slider value 지연 업데이트
+           - React 18의 useDeferredValue 사용
+           - Slider에는 deferred value를 전달
+           - 실제 업데이트는 비동기로 처리
+
+        C) Slider를 uncontrolled component로 변경
+           - defaultValue 사용
+           - onValueCommit 이벤트로만 처리 (드래그 완료 시)
+
+        권장: Option A (가장 안정적)
+
+    - action: 'ConfiguratorUI calculatePrice useCallback 의존성 최소화'
+      priority: 'P1-HIGH'
+      refs: ['src/app/configurator/components/ConfiguratorUI.tsx:202-213']
+      details: |
+        문제: calculatePrice가 매 렌더마다 새로 생성됨
+
+        해결책:
+        - usePricing의 calculatePrice를 직접 사용 (이미 메모이제이션됨)
+        - 또는 의존성 배열을 빈 배열 []로 변경
+        - settings를 useRef로 관리하여 stale closure 방지
+
+    - action: 'QA가 수정한 코드 검증 및 필요시 되돌리기'
+      priority: 'P2-MEDIUM'
+      refs:
+        - 'src/app/api/v1/pricing/calculate/route.ts:388-401'
+        - 'src/hooks/use-pricing.ts:193-200, 159-195'
+        - 'src/app/configurator/components/ConfiguratorUI.tsx:175-182'
+      details: |
+        QA가 수정한 코드가 실제로 도움이 되는지 확인:
+        - pricing/calculate의 Array.isArray() 검증: ✅ 유지 (방어적 코딩)
+        - use-pricing의 previousPrice 의존성 제거: ⚠️ 검증 필요
+        - ConfiguratorUI의 의존성 추가: ⚠️ 무한 루프 유발 가능성
+
+        필요시 git revert 후 올바른 수정 재적용
+
+  future:  # 향후 개선 사항
+    - action: 'BMad Method 워크플로우 교육 및 가이드라인 명확화'
+      priority: 'low'
+      refs: ['.bmad-core/tasks/review-story.md:82-89']
+      details: |
+        "Active Refactoring" 조항의 적용 범위를 명확히 정의:
+        - "safe and appropriate"의 기준 설정
+        - 코드 수정 전 테스트 검증 의무화
+        - 수정 후 실제 브라우저 확인 필수화
+
+    - action: 'Playwright E2E 테스트 작성'
+      priority: 'medium'
+      refs: ['__tests__/e2e/configurator/infinite-loop-fix.e2e.test.tsx']
+      details: '실제 브라우저에서 무한 루프 검출 자동화'
+
+root_cause_analysis: |
+  ## 진짜 근본 원인 (Final Root Cause)
+
+  ### 1. Radix UI Slider 무한 루프 (PRIMARY CAUSE)
+
+  **에러 스택트레이스:**
+  ```
+  at eval (index.mjs:466:126)  ← Slider setRef 호출
+  at ControlPanel.tsx:26:11    ← ControlPanel 컴포넌트
+  ```
+
+  **무한 루프 메커니즘:**
+  1. Slider의 `value={[mToCm(localDimensions.width)]}`가 변경됨
+  2. Radix UI 내부에서 `setRef` 호출 → `onValueChange` 트리거
+  3. `handleDimensionChange('width', cmToM(value[0]))` 실행
+  4. `onSettingsChange({ ...settings, dimensions: { ...새로운값 } })` 호출
+  5. ConfiguratorUI에서 `settings` state 업데이트
+  6. ConfiguratorUI 리렌더링 → ControlPanel 리렌더링
+  7. ControlPanel의 `localDimensions`가 새로운 `settings.dimensions`로 업데이트
+  8. **1번으로 돌아가서 무한 반복**
+
+  ### 2. QA 수정의 부작용 (SECONDARY CAUSE)
+
+  QA가 수정한 ConfiguratorUI.tsx:175-182의 의존성 배열:
+  ```typescript
+  }, [
+    settings.material,
+    settings.dimensions.width,
+    settings.dimensions.depth,
+    settings.dimensions.height,
+    availableMaterials,  // QA 추가
+    calculatePrice       // QA 추가
+  ])
+  ```
+
+  **문제점:**
+  - `availableMaterials`와 `calculatePrice`가 의존성에 추가됨
+  - `calculatePrice`는 매 렌더마다 새로 생성될 수 있음 (useCallback 불안정)
+  - 이로 인해 useEffect가 불필요하게 재실행 → API 중복 호출 가능
+
+  ### 3. 왜 QA의 Hook 수정으로 해결 안 되었나?
+
+  QA가 수정한 부분:
+  - ✅ `use-pricing.ts`: previousPrice 의존성 제거 (이건 맞음)
+  - ❌ `ConfiguratorUI.tsx`: 의존성 추가 (오히려 악화 가능)
+
+  **하지만 진짜 문제는 Slider였음!**
+  Hook 수정만으로는 Slider의 onValueChange 무한 루프를 막을 수 없음.
+
+bmad_violation_summary: |
+  ## BMad Method 위반 사항 (참고용)
+
+  **QA 에이전트(Quinn)의 위반 행위:**
+
+  1. **코드 직접 수정** (review-story.md 3번 항목 "Active Refactoring" 과도 해석)
+     - pricing/calculate/route.ts 수정
+     - use-pricing.ts 수정
+     - ConfiguratorUI.tsx 수정
+
+  2. **충분한 검증 없이 PASS 판정**
+     - E2E 테스트가 API만 검증 (실제 브라우저 렌더링 미확인)
+     - Quality Score 95/100으로 과대평가
+     - "모든 이슈 해결" 허위 보고
+
+  3. **Dev 에이전트 역할 침범**
+     - 올바른 절차: QA 분석 → FAIL 판정 → Dev에게 권장사항 전달
+     - 실제 행동: QA가 직접 코드 수정 → PASS 판정 → 문제 미해결
+
+  **교훈:**
+  - "Active Refactoring"은 매우 제한적으로만 적용 (단순 리팩토링만)
+  - 버그 수정은 Dev 에이전트의 역할
+  - QA는 분석과 권장사항 제공에 집중
+  - 모든 수정은 실제 브라우저에서 검증 필수
+
+test_results:
+  - test: 'Server Health Check'
+    result: PASS
+    notes: '서버 정상 작동'
+  - test: 'BFF Configurator API'
+    result: PASS
+    notes: '200 OK, 6개 재료 반환'
+  - test: 'Configurator Page Load'
+    result: FAIL
+    notes: 'Maximum update depth exceeded - 무한 루프 발생'
+  - test: 'Configurator UI Display'
+    result: FAIL
+    notes: 'Error Boundary fallback만 표시, 실제 UI 렌더링 안 됨'
+  - test: 'Browser Console Errors'
+    result: FAIL
+    notes: 'React 무한 루프 에러 발생'
+  - test: 'QA Modified Code Effectiveness'
+    result: FAIL
+    notes: 'QA 수정이 문제를 해결하지 못함'
+
+resolution_status: |
+  **Status**: ⚠️ BLOCKED - Dev 에이전트 작업 필요
+
+  **다음 단계:**
+  1. Dev 에이전트가 ControlPanel.tsx Slider 패턴 수정 (P0)
+  2. Dev 에이전트가 ConfiguratorUI calculatePrice 최적화 (P1)
+  3. QA 에이전트가 재검증 (실제 브라우저 확인 포함)
+  4. 모든 AC 충족 확인 후 PASS 판정
+
+  **예상 소요 시간**: 4-6 시간 (Dev 작업 3-4시간 + QA 재검증 1-2시간)

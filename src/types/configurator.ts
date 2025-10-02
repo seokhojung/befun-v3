@@ -11,7 +11,7 @@ export interface Material {
 export interface MaterialProperties {
   metalness?: number
   roughness?: number
-  type: 'wood' | 'mdf' | 'steel'
+  type: 'wood' | 'mdf' | 'steel' | 'metal' | 'glass' | 'fabric'
 }
 
 export interface DimensionRange {

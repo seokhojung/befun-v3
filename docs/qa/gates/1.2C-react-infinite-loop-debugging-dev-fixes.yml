@@ -1,0 +1,334 @@
+schema: 1
+story: '1.2C'
+story_title: 'React 무한 루프 디버깅 및 데이터 마이그레이션 - Epic 2 Technical Debt Resolution'
+gate: FAIL
+status_reason: 'Dev Agent의 수정이 무한 루프를 해결하지 못함. ControlPanel defaultValue 패턴 오용 + ConfiguratorUI handleSettingsChange useCallback 의존성 문제 미해결. Error Boundary만 표시되며 페이지 사용 불가.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-02T06:30:00.000Z'
+
+top_issues:
+  - severity: high
+    category: 'BLOCKER-DEV-001'
+    title: 'ControlPanel defaultValue 패턴 오용 - UI 불일치'
+    description: |
+      Slider를 controlled → uncontrolled component로 변경했으나 잘못된 구현.
+      defaultValue는 초기 렌더링 시에만 적용되며, settings.dimensions 변경 시
+      Slider는 업데이트되지 않음. Label은 업데이트되는데 Slider는 그대로.
+    files:
+      - 'src/app/configurator/components/ControlPanel.tsx:145, 178, 211'
+    suggested_owner: 'dev'
+    evidence: |
+      Line 145: defaultValue={[mToCm(settings.dimensions.width)]}
+      Line 139: Label은 {mToCm(settings.dimensions.width)} 사용 → 동기화 안 됨
+
+  - severity: high
+    category: 'BLOCKER-DEV-002'
+    title: 'ConfiguratorUI handleSettingsChange 무한 루프 - 진짜 근본 원인'
+    description: |
+      handleSettingsChange useCallback의 의존성 배열에 availableMaterials,
+      calculatePrice가 포함되어 매 렌더마다 새 함수 생성 → ControlPanel에
+      전달되는 onSettingsChange prop 변경 → 리렌더 → 무한 루프
+    files:
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:201-229'
+    suggested_owner: 'dev'
+    evidence: |
+      Line 229: }, [availableMaterials, calculatePrice])
+      이 의존성들이 변경되면 handleSettingsChange 재생성 → prop 변경 → 무한 루프
+
+  - severity: high
+    category: 'BLOCKER-DEV-003'
+    title: 'ControlPanel handleDimensionChange stale closure 리스크'
+    description: |
+      Debounce 로직에서 300ms 후 onSettingsChange 호출 시 ...settings 사용.
+      settings는 props이므로 300ms 후에는 stale한 값일 수 있음.
+    files:
+      - 'src/app/configurator/components/ControlPanel.tsx:62-67'
+    suggested_owner: 'dev'
+    evidence: |
+      Line 63-66:
+      onSettingsChange({
+        ...settings,  // ← 오래된 settings 참조 가능
+        dimensions: localDimensionsRef.current
+      })
+
+  - severity: medium
+    category: 'CODE-QUALITY-001'
+    title: 'ConfiguratorUI useEffect stale closure 리스크'
+    description: |
+      Line 161-183 useEffect에서 availableMaterials, calculatePrice를 사용하는데
+      의존성 배열에서 제거함. eslint-disable로 우회했으나 stale closure 가능성.
+    files:
+      - 'src/app/configurator/components/ConfiguratorUI.tsx:161-183'
+    suggested_owner: 'dev'
+    evidence: |
+      Line 162-173에서 availableMaterials, calculatePrice 사용
+      Line 177: // eslint-disable-next-line react-hooks/exhaustive-deps
+      React Hook 규칙 위반
+
+  - severity: medium
+    category: 'TEST-001'
+    title: 'E2E 테스트 부재 - 무한 루프 검출 불가'
+    description: |
+      무한 루프 회귀를 자동 검출할 E2E 테스트가 없음.
+      수동 브라우저 테스트에만 의존 중.
+    files:
+      - '__tests__/e2e/configurator/infinite-loop-fix.e2e.test.tsx (작성됨but 미실행)'
+    suggested_owner: 'dev'
+
+waiver:
+  active: false
+
+quality_score: 20  # FAIL: 100 - (NFR FAIL 2개 -40) - (AC Gap P0 2개 -40)
+expires: '2025-10-16T06:30:00.000Z'
+
+evidence:
+  tests_reviewed: 0  # E2E 테스트 미실행
+  risks_identified: 5  # BLOCKER 3개, MEDIUM 2개
+  trace:
+    ac_covered: [3, 4, 10]  # user_profiles, BFF API, 문서화(부분)
+    ac_gaps: [1, 2, 5, 6, 7, 8, 9, 11, 12]  # 무한 루프 관련 모두 미충족
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'API 인증, RLS 정책 정상'
+  performance:
+    status: FAIL
+    notes: '무한 루프로 CPU 100%, 브라우저 응답 없음, 로그 972KB'
+  reliability:
+    status: FAIL
+    notes: 'Configurator UI 완전 사용 불가, Error Boundary만 표시'
+  maintainability:
+    status: CONCERNS
+    notes: 'Dev 수정이 문제 악화, defaultValue 패턴 오용, stale closure 리스크'
+
+recommendations:
+  immediate:  # Dev 에이전트가 즉시 수정해야 함
+    - action: 'ControlPanel Slider를 다시 controlled component로 변경'
+      priority: 'P0-BLOCKER'
+      refs: ['src/app/configurator/components/ControlPanel.tsx:145, 178, 211']
+      details: |
+        문제: defaultValue는 초기값만 반영하며 props 변경 시 업데이트 안 됨
+
+        해결책 (3가지 옵션):
+
+        **Option A (권장): Controlled + useRef로 리렌더 방지**
+        ```typescript
+        const [localDimensions, setLocalDimensions] = useState(settings.dimensions)
+
+        // settings 변경 시 localDimensions 동기화
+        useEffect(() => {
+          setLocalDimensions(settings.dimensions)
+        }, [settings.dimensions])
+
+        const handleDimensionChange = (dimension, value) => {
+          const newDims = { ...localDimensions, [dimension]: value }
+          setLocalDimensions(newDims)  // 즉시 UI 업데이트
+
+          // Debounce는 onSettingsChange만
+          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+          debounceTimerRef.current = setTimeout(() => {
+            onSettingsChange({ ...settings, dimensions: newDims })
+          }, 300)
+        }
+
+        <Slider value={[mToCm(localDimensions.width)]} ... />
+        ```
+
+        **Option B: onValueCommit 사용 (드래그 완료 시만 업데이트)**
+        ```typescript
+        <Slider
+          value={[mToCm(settings.dimensions.width)]}
+          onValueCommit={(value) => {  // 드래그 완료 시만 호출
+            handleDimensionChange('width', cmToM(value[0]))
+          }}
+        />
+        ```
+
+        **Option C: React 18 useDeferredValue**
+        ```typescript
+        const deferredDimensions = useDeferredValue(settings.dimensions)
+        <Slider value={[mToCm(deferredDimensions.width)]} ... />
+        ```
+
+    - action: 'ConfiguratorUI handleSettingsChange useCallback 의존성 제거 + useRef 패턴'
+      priority: 'P0-BLOCKER'
+      refs: ['src/app/configurator/components/ConfiguratorUI.tsx:201-229']
+      details: |
+        문제: availableMaterials, calculatePrice 의존성으로 매 렌더 재생성
+
+        해결책:
+        ```typescript
+        const availableMaterialsRef = useRef(availableMaterials)
+        const calculatePriceRef = useRef(calculatePrice)
+
+        useEffect(() => {
+          availableMaterialsRef.current = availableMaterials
+          calculatePriceRef.current = calculatePrice
+        }, [availableMaterials, calculatePrice])
+
+        const handleSettingsChange = useCallback((newSettings) => {
+          setSettings(newSettings)
+
+          const currentMaterial = availableMaterialsRef.current.find(...)
+          if (currentMaterial) {
+            calculatePriceRef.current({...})
+          }
+        }, [])  // 빈 의존성 배열!
+        ```
+
+    - action: 'ControlPanel stale closure 수정 - settingsRef 사용'
+      priority: 'P1-HIGH'
+      refs: ['src/app/configurator/components/ControlPanel.tsx:62-67']
+      details: |
+        문제: 300ms 후 ...settings가 stale할 수 있음
+
+        해결책:
+        ```typescript
+        const settingsRef = useRef(settings)
+        useEffect(() => { settingsRef.current = settings }, [settings])
+
+        debounceTimerRef.current = setTimeout(() => {
+          onSettingsChange({
+            ...settingsRef.current,  // 최신 settings
+            dimensions: localDimensionsRef.current
+          })
+        }, 300)
+        ```
+
+    - action: 'ConfiguratorUI useEffect 의존성 배열 수정'
+      priority: 'P1-HIGH'
+      refs: ['src/app/configurator/components/ConfiguratorUI.tsx:161-183']
+      details: |
+        문제: eslint-disable로 우회했으나 stale closure 리스크
+
+        해결책:
+        ```typescript
+        const availableMaterialsRef = useRef(availableMaterials)
+        const calculatePriceRef = useRef(calculatePrice)
+
+        useEffect(() => {
+          availableMaterialsRef.current = availableMaterials
+          calculatePriceRef.current = calculatePrice
+        }, [availableMaterials, calculatePrice])
+
+        useEffect(() => {
+          if (availableMaterialsRef.current.length > 0) {
+            const currentMaterial = availableMaterialsRef.current.find(...)
+            if (currentMaterial) {
+              calculatePriceRef.current({...})
+            }
+          }
+        }, [
+          settings.material,
+          settings.dimensions.width,
+          settings.dimensions.depth,
+          settings.dimensions.height
+        ])  // eslint-disable 제거!
+        ```
+
+  future:  # 향후 개선 사항
+    - action: 'Playwright E2E 테스트 작성 및 CI 통합'
+      priority: 'medium'
+      refs: ['__tests__/e2e/configurator/infinite-loop-fix.e2e.test.tsx']
+      details: |
+        무한 루프 회귀 방지를 위한 자동화 테스트 필요
+        - 페이지 로드 시 "Maximum update depth" 에러 미발생 확인
+        - Slider 드래그 시 무한 루프 미발생 확인
+        - 성능 메트릭 수집 (CPU 사용률, 메모리)
+
+root_cause_analysis: |
+  ## 최종 근본 원인 분석 (Dev Agent의 오진 정정)
+
+  **Dev Agent가 파악한 원인 (틀림):**
+  - ControlPanel Slider의 value prop과 onValueChange가 무한 루프 생성
+  - useRef + debouncing으로 해결 시도
+
+  **진짜 근본 원인 (QA 분석):**
+
+  ### Primary Cause 1: handleSettingsChange useCallback 의존성 문제
+
+  **무한 루프 체인:**
+  1. Slider 드래그 → handleDimensionChange (ControlPanel)
+  2. → 300ms debounce 후 onSettingsChange(newSettings) 호출
+  3. → handleSettingsChange 실행 (ConfiguratorUI Line 201)
+  4. → setSettings(newSettings) → ConfiguratorUI 리렌더
+  5. → **handleSettingsChange가 재생성됨** (availableMaterials, calculatePrice 의존성)
+  6. → ControlPanel에 전달되는 onSettingsChange prop 변경
+  7. → **ControlPanel 리렌더**
+  8. → useEffect(settings.dimensions 동기화) 실행 (Line 35-37)
+  9. → localDimensionsRef.current 업데이트
+  10. → 어딘가에서 다시 1번으로... **무한 루프!**
+
+  ### Primary Cause 2: ControlPanel defaultValue 패턴 오용
+
+  **UI 불일치 문제:**
+  - defaultValue는 초기 렌더링 시에만 적용됨
+  - settings.dimensions 변경 시 Slider는 업데이트 안 됨
+  - Label (Line 139)은 {mToCm(settings.dimensions.width)} 표시 → 값 불일치
+  - 사용자가 Slider를 드래그하지 않았는데 Label만 변경됨 → **혼란**
+
+  ### Secondary Cause: Stale Closure 리스크
+
+  **ControlPanel handleDimensionChange (Line 62-67):**
+  ```typescript
+  setTimeout(() => {
+    onSettingsChange({
+      ...settings,  // ← 300ms 전의 settings (stale)
+      dimensions: localDimensionsRef.current
+    })
+  }, 300)
+  ```
+
+  **ConfiguratorUI useEffect (Line 161-183):**
+  - availableMaterials, calculatePrice를 사용하는데 의존성에서 제거
+  - eslint-disable로 우회했으나 stale closure 가능성
+
+  ## 왜 Dev의 수정이 실패했나?
+
+  1. **잘못된 문제 파악**: Slider의 controlled component 패턴이 문제라고 생각함
+  2. **잘못된 해결책**: defaultValue로 변경 → 오히려 UI 불일치 야기
+  3. **진짜 원인 미발견**: handleSettingsChange의 useCallback 의존성 문제를 발견하지 못함
+  4. **부분적 수정**: useEffect 의존성만 수정하고 useCallback은 그대로 둠
+  5. **검증 부족**: 실제 브라우저 테스트를 하지 않고 제출함
+
+  ## 교훈
+
+  - React 무한 루프는 여러 컴포넌트 간 상호작용에서 발생함
+  - 단일 컴포넌트만 수정해서는 해결 안 됨
+  - useCallback, useMemo의 의존성 배열이 핵심
+  - 실제 브라우저 검증 없이 코드 리뷰만으로는 부족함
+
+test_results:
+  - test: 'Browser Manual Test'
+    result: FAIL
+    notes: 'Error Boundary "컨피규레이터 오류" + "Maximum update depth exceeded" 표시'
+  - test: 'BFF Configurator API'
+    result: PASS
+    notes: '200 OK, 6개 재료 반환'
+  - test: 'user_profiles Record'
+    result: PASS
+    notes: 'PO가 수동 생성 완료'
+  - test: 'Pricing API'
+    result: FAIL
+    notes: '400 Bad Request (validation failed)'
+  - test: 'TypeScript type-check'
+    result: CONCERNS
+    notes: '기존 테스트 파일 에러만 존재 (Story 범위 외)'
+  - test: 'ESLint'
+    result: CONCERNS
+    notes: '1개 경고 (use-pricing.ts previousPrice 의존성)'
+
+resolution_status: |
+  **Status**: ❌ FAIL - Dev 에이전트 재작업 필요
+
+  **다음 단계:**
+  1. Dev 에이전트가 recommendations.immediate 4개 항목 모두 수정
+  2. **실제 브라우저 테스트 필수** (Error Boundary 사라짐 확인)
+  3. Slider 드래그 → 무한 루프 미발생 확인
+  4. QA 에이전트가 재검증
+
+  **예상 소요 시간**: 4-6 시간 (Dev 작업 3-4시간 + QA 재검증 1-2시간)
+
+  **Critical Path**:
+  - P0-BLOCKER 3개 수정 → 브라우저 테스트 → PASS 확인 → Done

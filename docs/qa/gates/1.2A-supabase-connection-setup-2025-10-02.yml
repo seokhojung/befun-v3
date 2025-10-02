@@ -1,0 +1,178 @@
+# QA Gate Report: Story 1.2A Supabase Connection Setup
+# Date: 2025-10-02
+# QA Agent: Quinn (BMad QA)
+# Testing Strategy: Brownfield Fast Track Debugging
+
+story_id: "1.2A"
+story_title: "Supabase 연결 설정"
+test_date: "2025-10-02"
+qa_agent: "Quinn"
+workflow: "Brownfield Fast Track"
+
+gate_status: "PASS_WITH_CONCERNS"
+overall_result: "⚠️ PASS with CONCERNS"
+recommendation: "Story 1.2A/1.2B 스코프 내에서 PASS. Epic 2 기술 부채는 별도 Story 1.2C로 처리 권장."
+
+## 테스트 환경
+environment:
+  os: "Windows 11"
+  node_version: "v20.x"
+  next_version: "14.2.33"
+  browser: "Chrome/Edge"
+  server: "localhost:3000"
+
+## 수락 기준 검증 결과
+acceptance_criteria:
+  - criterion: "AC1: Supabase 클라이언트 정상 초기화"
+    status: "PASS"
+    evidence: "✅ src/lib/supabase/client.ts 정상 작동, createClient() 성공"
+
+  - criterion: "AC2: 환경 변수 정상 로드"
+    status: "PASS"
+    evidence: "✅ NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY 정상"
+
+  - criterion: "AC3: 데이터베이스 연결 테스트 통과"
+    status: "PASS"
+    evidence: "✅ /api/db-test 200 OK, saved_design 테이블 조회 성공"
+
+  - criterion: "AC4: 인증 흐름 정상 작동"
+    status: "PASS"
+    evidence: "✅ 로그인/로그아웃 정상, 세션 관리 작동, test01@test.test 인증 성공"
+
+## 발견된 이슈
+issues:
+  resolved:
+    - id: "ISSUE-1"
+      title: "빌드 캐시 손상"
+      severity: "HIGH"
+      description: "layout.js:61 Uncaught SyntaxError: Invalid or unexpected token"
+      root_cause: ".next 빌드 캐시 손상 (HMR 과정에서 발생)"
+      resolution: "PowerShell Force Delete 후 재빌드"
+      status: "RESOLVED"
+      fix_applied: "powershell -Command 'Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue' && npm run dev"
+
+    - id: "ISSUE-2"
+      title: "누락된 Peer Dependency"
+      severity: "MEDIUM"
+      description: "Module not found: @radix-ui/react-icons"
+      root_cause: "shadcn CLI가 dialog.tsx 생성 시 peer dependency 미설치"
+      resolution: "npm install @radix-ui/react-icons"
+      status: "RESOLVED"
+      fix_applied: "npm install @radix-ui/react-icons@^1.3.2"
+
+    - id: "ISSUE-3"
+      title: "SWR Import 패턴 오류"
+      severity: "HIGH"
+      description: "useSWR is not a function"
+      root_cause: "SWR v2.x는 default export 사용, named import 시도"
+      resolution: "import 문법 수정 (default import로 변경)"
+      status: "RESOLVED"
+      fix_applied: "src/hooks/use-pricing.ts:4 - import useSWR from 'swr'"
+      file_changed: "src/hooks/use-pricing.ts"
+
+  ongoing:
+    - id: "BLOCKER-002"
+      title: "React 무한 루프 (Maximum update depth exceeded)"
+      severity: "BLOCKER"
+      description: "setState 호출이 무한 반복되어 브라우저 멈춤"
+      root_cause: "Radix UI 또는 framer-motion의 ref 전달 과정에서 무한 루프 발생"
+      location: "index.mjs:466 (setRef 내부 setState)"
+      scope: "Epic 2 기술 부채 (3D 컨피규레이터 UI 컴포넌트)"
+      recommendation: "별도 Story 1.2C로 분리 처리"
+      status: "IDENTIFIED"
+      next_action: "SM 에이전트가 Story 1.2C 생성, Dev 에이전트 디버깅 수행"
+
+    - id: "DATA-001"
+      title: "user_profiles 레코드 누락"
+      severity: "LOW"
+      description: "test01@test.test 사용자의 user_profiles 테이블 레코드 없음"
+      impact: "일부 API 500 에러 발생 가능 (마이페이지 등)"
+      scope: "테스트 데이터 마이그레이션 누락"
+      recommendation: "Story 1.2C에 포함하여 해결"
+      status: "IDENTIFIED"
+
+## 테스트 실행 결과
+test_results:
+  manual_testing:
+    - test: "홈페이지 렌더링"
+      url: "http://localhost:3000/"
+      result: "PASS"
+      status: "✅ 정상 렌더링, 하이드레이션 성공"
+
+    - test: "로그인 페이지"
+      url: "http://localhost:3000/login"
+      result: "PASS"
+      status: "✅ 로그인 폼 정상, Supabase Auth 연동 성공"
+
+    - test: "컨피규레이터 페이지"
+      url: "http://localhost:3000/configurator"
+      result: "FAIL"
+      status: "❌ BLOCKER-002로 인한 무한 루프, 페이지 접근 불가"
+      blocker: "BLOCKER-002"
+
+  api_testing:
+    - endpoint: "/api/db-test"
+      method: "GET"
+      result: "PASS"
+      status: "200 OK"
+      response: "{ success: true, count: N }"
+
+    - endpoint: "/api/auth/session"
+      method: "GET"
+      result: "PASS"
+      status: "200 OK"
+      response: "{ user: { id, email, ... } }"
+
+    - endpoint: "/api/health"
+      method: "GET"
+      result: "PASS"
+      status: "200 OK"
+      response: "{ status: 'ok', timestamp: ... }"
+
+## 기술 부채 및 권고사항
+technical_debt:
+  - category: "Epic 2 기술 부채"
+    items:
+      - "BLOCKER-002: React 무한 루프 해결 필요"
+      - "Radix UI + framer-motion 상호작용 검증 필요"
+      - "ConfiguratorUI 컴포넌트 리팩토링 검토"
+    priority: "HIGH"
+    estimated_effort: "4-8 hours"
+    assigned_story: "Story 1.2C (권장)"
+
+recommendations:
+  - "Story 1.2A/1.2B는 Supabase 연결 및 의존성 설치 스코프 내에서 PASS 처리"
+  - "BLOCKER-002는 Epic 2 범위로, 별도 Story 1.2C 생성하여 SM 에이전트에게 전달"
+  - "Story 1.2C에서 BLOCKER-002 + DATA-001 통합 해결"
+  - "Fast Track 전략이 효과적이었으나, 무한 루프는 Story 기반 접근 필요"
+
+## 워크플로우 준수 확인
+workflow_compliance:
+  brownfield_protocol: "COMPLIANT"
+  fast_track_strategy: "APPLIED"
+  procedure_adherence: "COMPLETE"
+  omissions: "NONE"
+  notes: "사용자 요청대로 생략 없이 전체 절차 완수"
+
+## 다음 단계
+next_steps:
+  - step: 1
+    action: "SM 에이전트에게 Story 1.2C 초안 전달"
+    responsible: "QA Agent (Quinn)"
+
+  - step: 2
+    action: "Story 1.2C 검증 및 백로그 추가"
+    responsible: "PO Agent"
+
+  - step: 3
+    action: "Story 1.2C 구현 (BLOCKER-002 해결)"
+    responsible: "Dev Agent"
+
+  - step: 4
+    action: "Story 1.2C QA 검증"
+    responsible: "QA Agent (Quinn)"
+
+## 서명
+qa_agent: "Quinn (BMad QA Agent)"
+timestamp: "2025-10-02T00:00:00+09:00"
+report_version: "1.0"

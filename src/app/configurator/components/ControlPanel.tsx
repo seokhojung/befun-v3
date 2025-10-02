@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
@@ -27,7 +27,20 @@ export default function ControlPanel({
   apiData,
   apiError
 }: ControlPanelProps) {
+  // Controlled component 패턴: local state로 즉시 UI 업데이트
   const [localDimensions, setLocalDimensions] = useState(settings.dimensions)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const settingsRef = useRef(settings)
+
+  // settings가 외부에서 변경되면 localDimensions 동기화
+  useEffect(() => {
+    setLocalDimensions(settings.dimensions)
+  }, [settings.dimensions])
+
+  // settingsRef를 항상 최신 상태로 유지 (stale closure 방지)
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
 
   const handleMaterialChange = (materialId: string) => {
     onSettingsChange({
@@ -40,17 +53,31 @@ export default function ControlPanel({
     dimension: 'width' | 'depth' | 'height',
     value: number
   ) => {
-    const newDimensions = {
-      ...localDimensions,
-      [dimension]: value
+    const newDims = { ...localDimensions, [dimension]: value }
+    setLocalDimensions(newDims) // 즉시 UI 업데이트
+
+    // 기존 debounce 타이머 취소
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
     }
 
-    setLocalDimensions(newDimensions)
-    onSettingsChange({
-      ...settings,
-      dimensions: newDimensions
-    })
+    // 300ms 디바운싱 후 onSettingsChange 호출
+    debounceTimerRef.current = setTimeout(() => {
+      onSettingsChange({
+        ...settingsRef.current, // 최신 settings 사용 (stale closure 방지)
+        dimensions: newDims
+      })
+    }, 300)
   }
+
+  // Cleanup: 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   const cmToM = (cm: number) => cm / 100
   const mToCm = (m: number) => Math.round(m * 100)

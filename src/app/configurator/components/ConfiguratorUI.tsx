@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import ThreeCanvas from '@/components/three/ThreeCanvas'
 import DeskModel from '@/components/three/DeskModel'
 import ControlPanel from './ControlPanel'
@@ -85,9 +85,31 @@ export default function ConfiguratorUI() {
     }
   })
 
+  // useRef 패턴: availableMaterials와 calculatePrice의 최신 참조 유지 (무한 루프 방지)
+  const availableMaterialsRef = useRef(availableMaterials)
+  const calculatePriceRef = useRef(calculatePrice)
+
+  useEffect(() => {
+    availableMaterialsRef.current = availableMaterials
+  }, [availableMaterials])
+
+  useEffect(() => {
+    calculatePriceRef.current = calculatePrice
+  }, [calculatePrice])
+
   // BFF API 데이터 로드
   useEffect(() => {
+    let isMounted = true // 컴포넌트 마운트 상태 추적
+    let hasAttempted = false // 중복 호출 방지
+
     const loadConfiguratorData = async () => {
+      // 중복 호출 방지 (무한 루프 연쇄 방지)
+      if (hasAttempted) {
+        console.warn('BFF API already attempted, skipping duplicate call')
+        return
+      }
+      hasAttempted = true
+
       try {
         const response = await fetch('/api/v1/bff/configurator?include_materials=true', {
           method: 'GET',
@@ -102,41 +124,57 @@ export default function ConfiguratorUI() {
         }
 
         const result = await response.json()
-        setApiData(result.data)
 
-        // API에서 재료 데이터를 받으면 변환하여 활용
-        if (result.data.materials && result.data.materials.length > 0) {
-          const convertedMaterials: Material[] = result.data.materials.map((apiMaterial: any) => ({
-            id: apiMaterial.id,
-            name: apiMaterial.name,
-            color: getColorByType(apiMaterial.type),
-            properties: {
-              type: apiMaterial.type,
-              metalness: apiMaterial.type === 'metal' ? 0.8 : 0.0,
-              roughness: apiMaterial.type === 'metal' ? 0.2 : 0.8
-            }
-          }))
-          setAvailableMaterials(convertedMaterials)
+        // 컴포넌트가 여전히 마운트되어 있을 때만 state 업데이트
+        if (isMounted) {
+          setApiData(result.data)
+
+          // API에서 재료 데이터를 받으면 변환하여 활용
+          if (result.data.materials && result.data.materials.length > 0) {
+            const convertedMaterials: Material[] = result.data.materials.map((apiMaterial: any) => ({
+              id: apiMaterial.id,
+              name: apiMaterial.name,
+              color: getColorByType(apiMaterial.type),
+              properties: {
+                type: apiMaterial.type,
+                metalness: apiMaterial.type === 'metal' ? 0.8 : 0.0,
+                roughness: apiMaterial.type === 'metal' ? 0.2 : 0.8
+              }
+            }))
+            setAvailableMaterials(convertedMaterials)
+          }
+
+          setApiError(null)
         }
-
-        setApiError(null)
       } catch (error) {
         console.error('BFF API 로드 실패:', error)
-        setApiError(error instanceof Error ? error.message : '알 수 없는 오류')
-        // API 실패 시 기본 재료 설정 유지
-        setAvailableMaterials(MATERIAL_CONFIGS)
+
+        // 컴포넌트가 여전히 마운트되어 있을 때만 state 업데이트
+        if (isMounted) {
+          setApiError(error instanceof Error ? error.message : '알 수 없는 오류')
+          // API 실패 시 기본 재료 설정 유지 (무한 루프 방지)
+          setAvailableMaterials(MATERIAL_CONFIGS)
+        }
+
+        // 에러 발생 시 재시도하지 않음 (무한 루프 방지)
+        console.warn('BFF API failed, falling back to default materials. Will NOT retry.')
       }
     }
 
     loadConfiguratorData()
+
+    // Cleanup 함수: 컴포넌트 언마운트 시 isMounted = false
+    return () => {
+      isMounted = false
+    }
   }, [])
 
-  // 초기 가격 계산
+  // 초기 가격 계산 (ref 사용으로 무한 루프 방지)
   useEffect(() => {
-    if (availableMaterials.length > 0 && settings) {
-      const currentMaterial = availableMaterials.find(m => m.id === settings.material)
+    if (availableMaterialsRef.current.length > 0 && settings) {
+      const currentMaterial = availableMaterialsRef.current.find(m => m.id === settings.material)
       if (currentMaterial?.properties.type) {
-        calculatePrice({
+        calculatePriceRef.current({
           width_cm: settings.dimensions.width,
           depth_cm: settings.dimensions.depth,
           height_cm: settings.dimensions.height,
@@ -146,7 +184,13 @@ export default function ConfiguratorUI() {
         })
       }
     }
-  }, [availableMaterials, settings, calculatePrice])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    settings.material,
+    settings.dimensions.width,
+    settings.dimensions.depth,
+    settings.dimensions.height
+  ])
 
   // API 재료 타입에 따른 색상 매핑
   const getColorByType = (type: string): string => {
@@ -177,13 +221,13 @@ export default function ConfiguratorUI() {
       'fabric': 'fabric'
     }
 
-    // 현재 선택된 재료 찾기
-    const currentMaterial = availableMaterials.find(m => m.id === newSettings.material)
+    // 현재 선택된 재료 찾기 (ref 사용 - 무한 루프 방지)
+    const currentMaterial = availableMaterialsRef.current.find(m => m.id === newSettings.material)
     const materialType = currentMaterial?.properties.type as MaterialType
 
-    // 가격 계산 요청 (매핑된 재료 타입이 있을 때만)
+    // 가격 계산 요청 (ref 사용 - 무한 루프 방지)
     if (materialType && materialTypeMapping[materialType]) {
-      calculatePrice({
+      calculatePriceRef.current({
         width_cm: newSettings.dimensions.width,
         depth_cm: newSettings.dimensions.depth,
         height_cm: newSettings.dimensions.height,
@@ -192,7 +236,7 @@ export default function ConfiguratorUI() {
         estimate_only: false
       })
     }
-  }, [availableMaterials, calculatePrice])
+  }, []) // 빈 의존성 배열 - 무한 루프 방지!
 
   const handlePerformanceUpdate = useCallback((metrics: { fps: number; frameTime: number; memoryUsage?: number }) => {
     setPerformanceMetrics(metrics)

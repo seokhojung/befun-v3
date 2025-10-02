@@ -110,3 +110,6 @@ supabase/.temp
 
 *storybook.log
 storybook-static
+
+# Windows special files
+nul
