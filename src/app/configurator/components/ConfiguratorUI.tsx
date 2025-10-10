@@ -49,6 +49,9 @@ interface ConfiguratorData {
 }
 
 export default function ConfiguratorUI() {
+  useEffect(() => {
+    console.debug('[Configurator] component mounted')
+  }, [])
   const [sceneObjects, setSceneObjects] = useState<SceneObjects | null>(null)
   const [settings, setSettings] = useState<ConfiguratorSettings>(DEFAULT_SETTINGS)
   const [isLoading, setIsLoading] = useState(true)
@@ -175,9 +178,9 @@ export default function ConfiguratorUI() {
       const currentMaterial = availableMaterialsRef.current.find(m => m.id === settings.material)
       if (currentMaterial?.properties.type) {
         calculatePriceRef.current({
-          width_cm: settings.dimensions.width,
-          depth_cm: settings.dimensions.depth,
-          height_cm: settings.dimensions.height,
+          width_cm: settings.dimensions.width * 100,
+          depth_cm: settings.dimensions.depth * 100,
+          height_cm: settings.dimensions.height * 100,
           material: currentMaterial.properties.type as MaterialType,
           use_cache: true,
           estimate_only: false
@@ -192,6 +195,11 @@ export default function ConfiguratorUI() {
     settings.dimensions.height
   ])
 
+  // 로딩 상태 변화 로깅
+  useEffect(() => {
+    console.debug('[Configurator] isLoading:', isLoading)
+  }, [isLoading])
+
   // API 재료 타입에 따른 색상 매핑
   const getColorByType = (type: string): string => {
     switch (type) {
@@ -204,7 +212,14 @@ export default function ConfiguratorUI() {
   }
 
   const handleSceneReady = useCallback((objects: SceneObjects) => {
+    console.debug('[Configurator] onSceneReady received')
     setSceneObjects(objects)
+    setIsLoading(false)
+  }, [])
+
+  const handleSceneError = useCallback((message: string) => {
+    console.warn('[Configurator] Scene init error:', message)
+    // 씬 초기화 실패 시에도 UI가 전면 블록되지 않도록 로딩 해제
     setIsLoading(false)
   }, [])
 
@@ -228,9 +243,9 @@ export default function ConfiguratorUI() {
     // 가격 계산 요청 (ref 사용 - 무한 루프 방지)
     if (materialType && materialTypeMapping[materialType]) {
       calculatePriceRef.current({
-        width_cm: newSettings.dimensions.width,
-        depth_cm: newSettings.dimensions.depth,
-        height_cm: newSettings.dimensions.height,
+        width_cm: newSettings.dimensions.width * 100,
+        depth_cm: newSettings.dimensions.depth * 100,
+        height_cm: newSettings.dimensions.height * 100,
         material: materialTypeMapping[materialType],
         use_cache: true,
         estimate_only: false
@@ -241,6 +256,17 @@ export default function ConfiguratorUI() {
   const handlePerformanceUpdate = useCallback((metrics: { fps: number; frameTime: number; memoryUsage?: number }) => {
     setPerformanceMetrics(metrics)
   }, [])
+
+  // 초기화 워치독: onSceneReady 미도달로 로딩이 지속될 경우 방어적으로 해제
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[Configurator] Init watchdog: forcing loading overlay off after timeout')
+        setIsLoading(false)
+      }
+    }, 5000)
+    return () => clearTimeout(timeout)
+  }, [isLoading])
 
   // 컨피규레이터 상태를 장바구니 데이터로 변환
   const convertToCartData = useCallback((designName?: string): CartItemData | null => {
@@ -312,6 +338,7 @@ export default function ConfiguratorUI() {
         <ThreeCanvas
           onSceneReady={handleSceneReady}
           onPerformanceUpdate={handlePerformanceUpdate}
+          onInitError={handleSceneError}
           className="w-full h-full"
         />
 
@@ -375,9 +402,9 @@ export default function ConfiguratorUI() {
 
                 if (materialType) {
                   await calculatePrice({
-                    width_cm: settings.dimensions.width,
-                    depth_cm: settings.dimensions.depth,
-                    height_cm: settings.dimensions.height,
+                    width_cm: settings.dimensions.width * 100,
+                    depth_cm: settings.dimensions.depth * 100,
+                    height_cm: settings.dimensions.height * 100,
                     material: materialType,
                     use_cache: false, // 재시도 시 캐시 무시
                     estimate_only: false
@@ -388,17 +415,21 @@ export default function ConfiguratorUI() {
           />
 
           {/* 구매 섹션 */}
-          {priceData && !priceLoading && !priceError && (
-            <div className="border-t pt-4">
-              <PurchaseSection
-                cartData={convertToCartData() as CartItemData}
-                isAuthenticated={apiData?.user?.id ? true : false}
-                onLogin={handleLogin}
-                showPriceCard={false}
-                className="space-y-3"
-              />
-            </div>
-          )}
+          {priceData && !priceLoading && !priceError && (() => {
+            const cartData = convertToCartData()
+            if (!cartData) return null
+            return (
+              <div className="border-t pt-4">
+                <PurchaseSection
+                  cartData={cartData as CartItemData}
+                  isAuthenticated={apiData?.user?.id ? true : false}
+                  onLogin={handleLogin}
+                  showPriceCard={false}
+                  className="space-y-3"
+                />
+              </div>
+            )
+          })()}
 
           {/* 장바구니 추가 불가능한 경우 안내 */}
           {(!priceData || priceLoading || priceError) && (
@@ -427,3 +458,4 @@ export default function ConfiguratorUI() {
     </div>
   )
 }
+

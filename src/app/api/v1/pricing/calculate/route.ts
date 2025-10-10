@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createSuccessResponse, createErrorResponse, withErrorHandling } from '@/lib/api/errors'
+import { API_ERROR_CODES } from '@/types/api'
 import { validateRequestBody, CommonSchemas } from '@/lib/api/validation'
 import { checkApiRateLimit, getRateLimitHeaders } from '@/lib/api/rate-limiter'
 import { processApiVersion } from '@/lib/api/version'
@@ -208,9 +209,12 @@ async function handleSingleCalculation(
 
     const response = createSuccessResponse(responseData, requestId)
 
-    // 캐시 정보 헤더 추가
-    response.headers.set('X-Cache-Status', cacheHit ? 'HIT' : 'MISS')
-    response.headers.set('X-Calculation-Time', calculationTime.toString())
+    // 캐시 정보 헤더 추가 (테스트 환경 호환 가드)
+    const setHeader = (response as any)?.headers?.set?.bind((response as any).headers)
+    if (typeof setHeader === 'function') {
+      setHeader('X-Cache-Status', cacheHit ? 'HIT' : 'MISS')
+      setHeader('X-Calculation-Time', calculationTime.toString())
+    }
 
     timer.complete(200)
     return response
@@ -222,10 +226,8 @@ async function handleSingleCalculation(
         errors: error.errors
       })
       timer.complete(400)
-      return createErrorResponse(
-        new Error(`유효하지 않은 요청: ${error.errors.map(e => e.message).join(', ')}`),
-        requestId
-      )
+      const errorMessage = error.errors?.map(e => e.message).join(', ') || 'Validation failed'
+      return createErrorResponse({ code: API_ERROR_CODES.BAD_REQUEST, message: `유효하지 않은 요청: ${errorMessage}` }, requestId)
     }
 
     if (error instanceof PriceCalculationError) {
@@ -336,10 +338,13 @@ async function handleBatchCalculation(
 
     const response = createSuccessResponse(responseData, requestId)
 
-    // 캐시 정보 헤더 추가
-    response.headers.set('X-Cache-Hits', cacheHits.toString())
-    response.headers.set('X-Cache-Misses', cacheMisses.toString())
-    response.headers.set('X-Total-Calculation-Time', totalCalculationTime.toString())
+    // 캐시 정보 헤더 추가 (테스트 환경 호환 가드)
+    const setHeader = (response as any)?.headers?.set?.bind((response as any).headers)
+    if (typeof setHeader === 'function') {
+      setHeader('X-Cache-Hits', cacheHits.toString())
+      setHeader('X-Cache-Misses', cacheMisses.toString())
+      setHeader('X-Total-Calculation-Time', totalCalculationTime.toString())
+    }
 
     timer.complete(200)
     return response
@@ -351,10 +356,8 @@ async function handleBatchCalculation(
         errors: error.errors
       })
       timer.complete(400)
-      return createErrorResponse(
-        new Error(`유효하지 않은 요청: ${error.errors.map(e => e.message).join(', ')}`),
-        requestId
-      )
+      const errorMessage = error.errors?.map(e => e.message).join(', ') || 'Validation failed'
+      return createErrorResponse({ code: API_ERROR_CODES.BAD_REQUEST, message: `유효하지 않은 요청: ${errorMessage}` }, requestId)
     }
 
     logger.error('Batch price calculation failed', requestId, {

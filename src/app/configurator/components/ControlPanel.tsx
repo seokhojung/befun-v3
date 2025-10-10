@@ -61,13 +61,13 @@ export default function ControlPanel({
       clearTimeout(debounceTimerRef.current)
     }
 
-    // 300ms 디바운싱 후 onSettingsChange 호출
+    // 500ms 디바운싱 후 onSettingsChange 호출 (가격 업데이트 가이드 준수)
     debounceTimerRef.current = setTimeout(() => {
       onSettingsChange({
         ...settingsRef.current, // 최신 settings 사용 (stale closure 방지)
         dimensions: newDims
       })
-    }, 300)
+    }, 500)
   }
 
   // Cleanup: 컴포넌트 언마운트 시 타이머 정리

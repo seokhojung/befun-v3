@@ -203,14 +203,23 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
     }
   }, [debouncedRequest, priceData, swrError])
 
-  // 가격 변경 콜백
+  // onPriceChange는 ref로 안정화하여 렌더마다 참조가 바뀌어도 콜백이 재발화되지 않도록 함
+  const onPriceChangeRef = useRef<typeof onPriceChange>(onPriceChange)
   useEffect(() => {
-    if (priceData && onPriceChange) {
-      onPriceChange(priceData, previousPrice)
+    onPriceChangeRef.current = onPriceChange
+  }, [onPriceChange])
+
+  // 가격 변경 콜백 (안정화 + 동일 가격이면 무시)
+  useEffect(() => {
+    if (!priceData) return
+
+    const shouldNotify = !previousPrice || previousPrice.total !== priceData.total
+    if (shouldNotify) {
+      onPriceChangeRef.current?.(priceData, previousPrice || undefined)
       setPreviousPrice(priceData)
     }
-    // previousPrice를 의존성에서 제거 - 무한 루프 방지
-  }, [priceData, onPriceChange])
+    // previousPrice를 의존성에서 제외하여 루프 방지
+  }, [priceData])
 
   // 가격 계산 함수
   const calculatePrice = useCallback(async (request: PriceCalculationRequest) => {

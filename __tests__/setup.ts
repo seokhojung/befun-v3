@@ -11,6 +11,8 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key'
 // Web API 폴리필
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder as any
+;(global as any).atob = (data: string) => Buffer.from(data, 'base64').toString('binary')
+;(global as any).btoa = (data: string) => Buffer.from(data, 'binary').toString('base64')
 
 // jsdom provides Request, Response, Headers
 // Only mock NextRequest and NextResponse for Next.js compatibility

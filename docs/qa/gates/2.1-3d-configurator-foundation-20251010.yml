@@ -1,0 +1,25 @@
+schema: 1
+story: "2.1"
+story_title: "3D 컨피규레이터 기반 구조 구축"
+gate: "CONCERNS"
+status_reason: "런타임 무한 로딩/초기화 지연(1.2D/1.2E 연계)로 기반 기능 재검증 필요. 구현은 존재하나 현재 AC 충족을 보장할 수 없음."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-10T00:00:00Z"
+waiver: { active: false }
+top_issues:
+  - id: "CFG-BASE-INIT"
+    severity: high
+    finding: "초기화 체인(onSceneReady/BFF) 도달 불가 사례로 씬 노출 실패"
+    suggested_action: "초기화 로깅/가드시스템 도입, BFF 폴백 시에도 로딩 해제 보장"
+  - id: "PERF-FPS-STARTUP"
+    severity: medium
+    finding: "모바일 FPS≥30, 초기 로딩≤3초 검증 미완료"
+    suggested_action: "성능 샘플링 테스트 보강 및 콜백 스로틀링"
+risk_summary:
+  totals: { critical: 0, high: 1, medium: 1, low: 0 }
+  recommendations:
+    must_fix:
+      - "1.2D/1.2E 선행 안정화 및 초기화/폴백 경로 보강"
+      - "ThreeCanvas 초기화/클린업/성능 테스트 강화"
+    monitor:
+      - "브라우저 콘솔 무에러 상태 지속 모니터링"

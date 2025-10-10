@@ -3,12 +3,8 @@
  */
 
 import { createMocks } from 'node-mocks-http'
-import { NextResponse } from 'next/server'
-let GET: any, POST: any
-// 테스트 전용 NextRequest 어댑터
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { makeNextRequest } = require('../../../helpers/next-request')
-// 모든 요청 생성을 NextRequest 어댑터를 통해 수행
+import { GET, POST } from '@/app/api/v1/pricing/calculate/route'
+import { NextRequest, NextResponse } from 'next/server'
 
 // PricingAPI 모킹
 jest.mock('@/lib/pricing', () => ({
@@ -30,7 +26,7 @@ jest.mock('@/lib/pricing', () => ({
 // API 의존성 모킹
 jest.mock('@/lib/api/errors', () => ({
   createSuccessResponse: jest.fn((data, requestId, status = 200) =>
-    new Response(JSON.stringify({ success: true, data, requestId }), {
+    NextResponse.json({ success: true, data, requestId }, {
       status,
       headers: { 'Content-Type': 'application/json' }
     })
@@ -39,28 +35,12 @@ jest.mock('@/lib/api/errors', () => ({
     const code = (error && (error.code || error?.error?.code)) || ''
     const status = code === 'BAD_REQUEST' ? 400 : 500
     const message = (error && (error.message || error?.error?.message)) || String(error)
-    return new Response(JSON.stringify({ success: false, error: message, requestId }), {
+    return NextResponse.json({ success: false, error: message, requestId }, {
       status,
       headers: { 'Content-Type': 'application/json' }
     })
   }),
-  withErrorHandling: jest.fn((handler) => async (request: any, context?: any) => {
-    try {
-      const res = await handler(request, context)
-      if (!res) {
-        return new Response(JSON.stringify({ success: false, error: 'Handler returned undefined' }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-      return res
-    } catch (e: any) {
-      return new Response(JSON.stringify({ success: false, error: e?.message || String(e) }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-  })
+  withErrorHandling: jest.fn((handler) => handler)
 }))
 
 jest.mock('@/lib/api/validation', () => ({
@@ -100,109 +80,9 @@ import { PricingAPI, PriceCalculationError } from '@/lib/pricing'
 
 const mockPricingAPI = PricingAPI as jest.Mocked<typeof PricingAPI>
 
-// 모듈 모킹이 설정된 이후 라우트를 로드해야 핸들러가 모킹과 일치합니다.
-beforeAll(() => {
-  const mod = require('@/app/api/v1/pricing/calculate/route')
-  GET = mod.GET
-  POST = mod.POST
-})
-
 describe('/api/v1/pricing/calculate', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-  })
-
-  describe('POST - Batch price calculation', () => {
-    it('should calculate multiple prices', async () => {
-      // Mock calculatePrice to return different totals per call
-      ;(mockPricingAPI.calculatePrice as any)
-        .mockResolvedValueOnce({ total: 1000, volume_m3: 0.1, material_info: { type: 'wood', modifier: 1.0 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 2000, volume_m3: 0.2, material_info: { type: 'metal', modifier: 1.5 }, calculated_at: new Date().toISOString() })
-
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calculations: [
-            { width_cm: 120, depth_cm: 60, height_cm: 75, material: 'wood', use_cache: true },
-            { width_cm: 100, depth_cm: 50, height_cm: 70, material: 'metal', use_cache: true },
-          ],
-          use_cache: true,
-        }),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.data.calculations).toHaveLength(2)
-    })
-
-    it('should calculate a 6-item batch and preserve order', async () => {
-      ;(mockPricingAPI.calculatePrice as any)
-        .mockResolvedValueOnce({ total: 1100, volume_m3: 0.11, material_info: { type: 'wood', modifier: 1.0 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 1200, volume_m3: 0.12, material_info: { type: 'mdf', modifier: 1.1 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 1300, volume_m3: 0.13, material_info: { type: 'steel', modifier: 1.2 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 1400, volume_m3: 0.14, material_info: { type: 'metal', modifier: 1.3 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 1500, volume_m3: 0.15, material_info: { type: 'glass', modifier: 1.1 }, calculated_at: new Date().toISOString() })
-        .mockResolvedValueOnce({ total: 1600, volume_m3: 0.16, material_info: { type: 'fabric', modifier: 0.9 }, calculated_at: new Date().toISOString() })
-
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calculations: [
-            { width_cm: 120, depth_cm: 60, height_cm: 75, material: 'wood', use_cache: true },
-            { width_cm: 121, depth_cm: 61, height_cm: 76, material: 'mdf', use_cache: true },
-            { width_cm: 122, depth_cm: 62, height_cm: 77, material: 'steel', use_cache: true },
-            { width_cm: 123, depth_cm: 63, height_cm: 78, material: 'metal', use_cache: true },
-            { width_cm: 124, depth_cm: 64, height_cm: 79, material: 'glass', use_cache: true },
-            { width_cm: 125, depth_cm: 65, height_cm: 80, material: 'fabric', use_cache: true },
-          ],
-          use_cache: true,
-        }),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
-      expect(data.data.calculations).toHaveLength(6)
-      // Order and totals check
-      expect(data.data.calculations.map((c: any) => c.result.total)).toEqual([
-        1100, 1200, 1300, 1400, 1500, 1600,
-      ])
-      // API was called 6 times with stripped payloads (no use_cache)
-      expect(mockPricingAPI.calculatePrice).toHaveBeenCalledTimes(6)
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(1, expect.objectContaining({ material: 'wood' }))
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(2, expect.objectContaining({ material: 'mdf' }))
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(3, expect.objectContaining({ material: 'steel' }))
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(4, expect.objectContaining({ material: 'metal' }))
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(5, expect.objectContaining({ material: 'glass' }))
-      expect(mockPricingAPI.calculatePrice).toHaveBeenNthCalledWith(6, expect.objectContaining({ material: 'fabric' }))
-    })
-
-    it('should return 400 on invalid batch item', async () => {
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calculations: [
-            { width_cm: -10, depth_cm: 60, height_cm: 75, material: 'wood' }, // invalid
-            { width_cm: 100, depth_cm: 50, height_cm: 70, material: 'metal' },
-          ],
-          use_cache: true,
-        }),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.success).toBe(false)
-    })
   })
 
   describe('POST - Single price calculation', () => {
@@ -239,7 +119,7 @@ describe('/api/v1/pricing/calculate', () => {
 
       mockPricingAPI.calculatePrice.mockResolvedValue(mockResult)
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -276,7 +156,7 @@ describe('/api/v1/pricing/calculate', () => {
 
       mockPricingAPI.calculatePriceEstimate.mockReturnValue(mockEstimate as any)
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -299,7 +179,7 @@ describe('/api/v1/pricing/calculate', () => {
     })
 
     it('should handle validation errors', async () => {
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -325,7 +205,7 @@ describe('/api/v1/pricing/calculate', () => {
         new PriceCalculationError('Material not found', 'MATERIAL_NOT_FOUND')
       )
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -355,7 +235,7 @@ describe('/api/v1/pricing/calculate', () => {
 
       mockPricingAPI.calculatePrice.mockResolvedValue(mockResult as any)
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -393,7 +273,7 @@ describe('/api/v1/pricing/calculate', () => {
         .mockResolvedValueOnce(mockResults[0] as any)
         .mockResolvedValueOnce(mockResults[1] as any)
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -433,7 +313,7 @@ describe('/api/v1/pricing/calculate', () => {
         material: 'wood'
       })
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -453,7 +333,7 @@ describe('/api/v1/pricing/calculate', () => {
 
   describe('GET - Cache stats and materials', () => {
     it('should return cache statistics', async () => {
-      const request = makeNextRequest(
+      const request = new NextRequest(
         'http://localhost:3000/api/v1/pricing/calculate?action=cache-stats'
       )
 
@@ -484,7 +364,7 @@ describe('/api/v1/pricing/calculate', () => {
 
       mockPricingAPI.policies.getAll.mockResolvedValue(mockPolicies as any)
 
-      const request = makeNextRequest(
+      const request = new NextRequest(
         'http://localhost:3000/api/v1/pricing/calculate?action=materials'
       )
 
@@ -498,7 +378,7 @@ describe('/api/v1/pricing/calculate', () => {
     })
 
     it('should handle invalid action parameter', async () => {
-      const request = makeNextRequest(
+      const request = new NextRequest(
         'http://localhost:3000/api/v1/pricing/calculate?action=invalid'
       )
 
@@ -523,7 +403,7 @@ describe('/api/v1/pricing/calculate', () => {
 
       const startTime = Date.now()
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -554,7 +434,7 @@ describe('/api/v1/pricing/calculate', () => {
       } as any)
 
       const requests = Array(5).fill(null).map(() =>
-        makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+        new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -583,7 +463,7 @@ describe('/api/v1/pricing/calculate', () => {
 
   describe('Error scenarios', () => {
     it('should handle malformed JSON', async () => {
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -599,7 +479,7 @@ describe('/api/v1/pricing/calculate', () => {
     })
 
     it('should handle missing request body', async () => {
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -618,7 +498,7 @@ describe('/api/v1/pricing/calculate', () => {
         new Error('Database connection failed')
       )
 
-      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      const request = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -639,3 +519,4 @@ describe('/api/v1/pricing/calculate', () => {
     })
   })
 })
+

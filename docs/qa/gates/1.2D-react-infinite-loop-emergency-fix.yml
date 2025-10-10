@@ -1,0 +1,25 @@
+schema: 1
+story: "1.2D"
+story_title: "React 무한 루프 긴급 수정 - 컨피규레이터 페이지"
+gate: "CONCERNS"
+status_reason: "초기화/로그 폭주 문제 해결로 핵심 기능 정상화. 성능 측정 및 회귀 방지 테스트 보강 후 PASS 재평가 권고."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-10T12:00:00Z"
+waiver: { active: false }
+top_issues:
+  - id: "CFG-INIT-001"
+    severity: high
+    finding: "초기 렌더에서 스피너 분기로 캔버스 div(ref)가 렌더되지 않아 mountRef가 null 유지 → 초기화 useEffect 미진입 → 무한 초기화"
+    suggested_action: "항상-캔버스 렌더 + 오버레이 스피너로 전환, 초기화 체인 가시화"
+  - id: "LOOP-CTRL-002"
+    severity: medium
+    finding: "상호작용(슬라이더/재료) 경로 디바운스·의존성 최적화 미흡 가능"
+    suggested_action: "useRef/useCallback 패턴 유지, 의존성 배열 최소화 및 루프 감시 테스트 추가"
+risk_summary:
+  totals: { critical: 0, high: 1, medium: 1, low: 0 }
+  recommendations:
+    must_fix:
+      - "초기화 체인 보강 및 로딩 해제 조건 분리"
+      - "초기화/상호작용 회귀 방지 테스트 추가"
+    monitor:
+      - "개발 모드 HMR 경고는 분리 모니터링"

@@ -1,0 +1,30 @@
+schema: 1
+story: "1.2E"
+story_title: "user_profiles 테이블 마이그레이션 완료 및 자동화"
+gate: "FAIL"
+status_reason: "마이그레이션/검증 스크립트 및 트리거 보강, 실행 로그, 테스트 근거 부재. AC1~7 다수 미충족."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-10T00:00:00Z"
+waiver: { active: false }
+top_issues:
+  - id: "MIG-001"
+    severity: high
+    finding: "누락 레코드 보정 스크립트 미구현(docs/scripts/* 없음)"
+    suggested_action: "migrate/check/bulk/single-user SQL 추가 및 dry-run/실행 리포트 산출"
+  - id: "TRG-002"
+    severity: medium
+    finding: "handle_new_user() 트리거 예외 케이스 검증/보강 미흡"
+    suggested_action: "소셜/OAuth 경로 보강 및 예외시 보정 큐 처리"
+  - id: "LOG-003"
+    severity: medium
+    finding: "마이그레이션 실행 로깅 표준 부재"
+    suggested_action: "로그 테이블/파일 표준화 및 실행 이력 기록"
+risk_summary:
+  totals: { critical: 0, high: 1, medium: 2, low: 0 }
+  recommendations:
+    must_fix:
+      - "전수 검증·보정 스크립트 구현 및 dry-run 리포트 산출"
+      - "트리거 단위/통합 테스트 작성"
+      - "BFF 500 방지 시나리오 통합 테스트 추가"
+    monitor:
+      - "운영 재발 모니터링 쿼리 및 경보 구성"
