@@ -201,6 +201,36 @@ describe('/api/v1/bff/configurator', () => {
       expect(body.data.warnings).toContain('Failed to load pricing rules')
     })
 
+    // QA Must-Fix(1.2E): user_profiles 미존재/조회 실패 시 500을 내지 않고 기본값으로 응답해야 함
+    it('프로필 조회 실패 시 500을 발생시키지 않고 기본값으로 응답해야 함', async () => {
+      let callCount = 0
+      mockSelect.mockImplementation(() => {
+        callCount++
+        switch (callCount) {
+          case 1: // materials 성공
+            return Promise.resolve({ data: mockMaterials, error: null })
+          case 2: // pricing_rules 성공
+            return Promise.resolve({ data: mockPricingRules, error: null })
+          case 3: // designs 성공
+            return Promise.resolve({ data: mockSavedDesigns, error: null })
+          case 4: // user profile 조회 실패 (행 없음 등)
+            return Promise.resolve({ data: null, error: { message: 'Row not found', code: 'PGRST116' } })
+          default:
+            return Promise.resolve({ data: [], error: null })
+        }
+      })
+
+      const request = createAuthenticatedRequest()
+      const response = await GET(request)
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.success).toBe(true)
+      // 최소 핵심 키들이 존재해야 하며, 기본 한도/티어 등은 폴백 값이어야 함
+      expect(body.data).toHaveProperty('user')
+      expect(body.data).toHaveProperty('design_limits')
+    })
+
     it('인증되지 않은 요청을 거부해야 함', async () => {
       mockAuthenticateRequest.mockRejectedValueOnce(new Error('Unauthorized'))
 

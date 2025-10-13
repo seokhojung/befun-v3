@@ -113,16 +113,20 @@ async function handleGet(request: NextRequest) {
     })
 
     // 사용자 정보 및 구독 상태 조회
-    const { data: userProfile, error: userError } = await supabaseAdmin
+    const { data: userProfileData, error: userError } = await supabaseAdmin
       .from('user_profiles')
       .select('subscription_tier, design_quota_used, design_quota_limit, ui_preferences')
       .eq('id', authContext.user.id)
       .single()
 
-    if (userError) {
-      logger.error('Failed to fetch user profile', requestId, { error: userError })
-      throw new Error('사용자 정보를 조회할 수 없습니다')
-    }
+    // 프로필 조회 실패 시 기본값으로 폴백하여 500 방지 (1.2E Must-Fix)
+    const userProfile = (() => {
+      if (userError) {
+        logger.warn('User profile missing or fetch failed, using defaults', requestId, { error: userError })
+        return null as any
+      }
+      return userProfileData as any
+    })()
 
     // 가격 정책 조회 (Story 2.2)
     let pricingPolicies: ConfiguratorResponse['pricing_policies'] = []

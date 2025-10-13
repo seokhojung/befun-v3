@@ -305,7 +305,7 @@ export function validateConfig(): void {
   }
 }
 
-// 설정 초기화
-if (typeof window === 'undefined') {
+// 설정 초기화 (테스트 환경에서는 건너뜀: 모듈 임포트 시 부작용 방지)
+if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
   validateConfig()
 }

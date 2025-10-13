@@ -1,65 +1,8 @@
-# Repository Guidelines
-
-## Project Structure & Module Organization
-
-- `src/app` — Next.js App Router. API routes in `src/app/api` (versioned under `src/app/api/v1`).
-- `src/components` — Reusable UI/domain components (`PascalCase.tsx`).
-- `src/lib` — Business logic, API clients, utilities. Shared types in `src/types`, small helpers in `src/utils`.
-- `public` — Static assets. `docs/` architecture & stories; `supabase/` local setup.
-- Tests mirror features under `__tests__/` (e.g., `components`, `lib`, `api`, `e2e`).
-
-## Build, Test, and Development Commands
-
-- `npm run dev` — Start Next.js dev server.
-- `npm run build` / `npm start` — Production build and serve.
-- `npm run lint` / `npm run lint:fix` — ESLint check/fix.
-- `npm run prettier` / `npm run prettier:fix` — Prettier check/format.
-- `npm run type-check` — TypeScript type check.
-- `npm test` / `npm run test:watch` / `npm run test:coverage` — Jest tests.
-- `npm run test:e2e` — Playwright E2E (first run: `npx playwright install`).
-- `npm run storybook` / `npm run build-storybook` — UI docs & snapshots.
-
-## Coding Style & Naming Conventions
-
-- TypeScript with path alias `@/*`.
-- Prettier: 2-space indent, single quotes, no semicolons, width 100.
-- ESLint extends `next/core-web-vitals`; key rules: `prefer-const`, `no-var`.
-- Files: hooks/utils kebab-case (e.g., `use-debounce.ts`), components `PascalCase.tsx`. Keep legacy names as-is.
-
-## Testing Guidelines
-
-- Jest + Testing Library (`jsdom`). Place tests in `__tests__` or `*.test|spec.(ts|tsx)`.
-- Coverage thresholds: branches 70, functions 70, lines 80, statements 80. Higher for `src/app/api/**` and `src/lib/**`.
-- E2E specs live in `__tests__/e2e`; run with `npm run test:e2e`.
-
-## Commit & Pull Request Guidelines
-
-- Use Conventional Commits (`feat:`, `fix:`, `docs:`…).
-- Before PR: `npm run lint`, `npm run type-check`, `npm test` (ensure coverage passes).
-- PR must include: concise summary, linked issues (e.g., `#123`), screenshots/Storybook links for UI, and test/edge-case notes.
-
-## Security, Environment & Deployment
-
-- Copy `.env.example` to `.env.local`; never commit secrets. Place Supabase keys only in `.env.local`.
-- Do not hardcode secrets; keep `public/` non-sensitive.
-- Node.js 20.x LTS. Three.js pinned to r169. Target deployment: Vercel serverless.
-
-## Performance & API Notes
-
-- Goals: mobile ≥30 FPS; code‑split 3D components; debounce price updates by 500 ms; key API responses < 500 ms.
-- BFF pattern; validate inputs with Zod; JWT + CSRF; rate‑limit sensitive actions (5–10 req/min); follow Supabase RLS.
-
-## Handy Local Endpoints
-
-- Health check: `curl http://localhost:3000/api/health`
-- DB test: `curl http://localhost:3000/api/db-test`
-
-_한국어로 작업하고 대답한다._
-
 <!-- BEGIN: BMAD-AGENTS -->
 
-**\*\***Bmad-agents 절차를 절대 생략하거나 누락시켜서는 안된다. bmad method 워크플로우를 꼭 지켜야 한다.**\*
-**한국어로 대답하고 작업한다.\*\*
+**_Bmad-agents 절차를 절대 생략하거나 누락시켜서는 안된다. bmad method 워크플로우를 꼭 지켜야 한다._**
+
+**한국어로 대답하고 작업한다.**
 
 # BMAD-METHOD Agents and Tasks
 

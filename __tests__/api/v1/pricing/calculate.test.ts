@@ -102,6 +102,11 @@ const mockPricingAPI = PricingAPI as jest.Mocked<typeof PricingAPI>
 
 // 모듈 모킹이 설정된 이후 라우트를 로드해야 핸들러가 모킹과 일치합니다.
 beforeAll(() => {
+  // 테스트별 환경 변수 재설정(기화 부작용 차단)
+  process.env.NODE_ENV = 'test'
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key'
   const mod = require('@/app/api/v1/pricing/calculate/route')
   GET = mod.GET
   POST = mod.POST
@@ -202,6 +207,39 @@ describe('/api/v1/pricing/calculate', () => {
 
       expect(response.status).toBe(400)
       expect(data.success).toBe(false)
+    })
+
+    it('should process a 10-item batch under 500ms (reasonable)', async () => {
+      // 빠른 resolve를 보장하는 mock
+      mockPricingAPI.calculatePrice.mockResolvedValue({
+        total: 1000,
+        volume_m3: 0.1,
+        material_info: { type: 'wood', modifier: 1.0 },
+        calculated_at: new Date().toISOString(),
+      } as any)
+
+      const calculations = Array.from({ length: 10 }).map((_, i) => ({
+        width_cm: 100 + i,
+        depth_cm: 50 + i,
+        height_cm: 70 + i,
+        material: (['wood','mdf','steel','metal','glass','fabric'][i % 6]) as any,
+        use_cache: true,
+      }))
+
+      const start = Date.now()
+      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calculations, use_cache: true }),
+      })
+      const response = await POST(request)
+      const elapsed = Date.now() - start
+
+      const data = await response.json()
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.calculations).toHaveLength(10)
+      expect(elapsed).toBeLessThan(500)
     })
   })
 
@@ -497,6 +535,47 @@ describe('/api/v1/pricing/calculate', () => {
       expect(data.data.materials[0].type).toBe('wood')
     })
 
+    it('should return 6 materials with valid fields', async () => {
+      const mockPolicies = [
+        { material_type: 'wood', base_price_per_m3: 50000, price_modifier: 1.0, legacy_material: true },
+        { material_type: 'mdf', base_price_per_m3: 50000, price_modifier: 0.8, legacy_material: true },
+        { material_type: 'steel', base_price_per_m3: 50000, price_modifier: 1.15, legacy_material: true },
+        { material_type: 'metal', base_price_per_m3: 50000, price_modifier: 1.5, legacy_material: false },
+        { material_type: 'glass', base_price_per_m3: 50000, price_modifier: 2.0, legacy_material: false },
+        { material_type: 'fabric', base_price_per_m3: 50000, price_modifier: 0.8, legacy_material: false },
+      ]
+      mockPricingAPI.policies.getAll.mockResolvedValue(mockPolicies as any)
+
+      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate?action=materials')
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data.materials)).toBe(true)
+      expect(data.data.materials).toHaveLength(6)
+      for (const m of data.data.materials) {
+        expect(typeof m.type).toBe('string')
+        expect(m.type.length).toBeGreaterThan(0)
+        expect(typeof m.base_price_per_m3).toBe('number')
+        expect(typeof m.price_modifier).toBe('number')
+        expect(typeof m.legacy_material).toBe('boolean')
+      }
+    })
+
+    it('should return cache-stats with expected schema', async () => {
+      const request = makeNextRequest('http://localhost:3000/api/v1/pricing/calculate?action=cache-stats')
+      const response = await GET(request)
+      const data = await response.json()
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(typeof data.data.cache.size).toBe('number')
+      expect(typeof data.data.cache.maxSize).toBe('number')
+      expect(typeof data.data.cache.ttl).toBe('number')
+      expect(typeof data.data.timestamp).toBe('string')
+      expect(() => new Date(data.data.timestamp)).not.toThrow()
+    })
+
     it('should handle invalid action parameter', async () => {
       const request = makeNextRequest(
         'http://localhost:3000/api/v1/pricing/calculate?action=invalid'
@@ -636,6 +715,8 @@ describe('/api/v1/pricing/calculate', () => {
 
       expect(response.status).toBe(500)
       expect(data.success).toBe(false)
+      // 표준 에러 메시지 확인
+      expect(String(data.error)).toContain('Invalid action parameter')
     })
   })
 })

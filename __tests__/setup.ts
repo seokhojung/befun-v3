@@ -14,6 +14,27 @@ global.TextDecoder = TextDecoder as any
 ;(global as any).atob = (data: string) => Buffer.from(data, 'base64').toString('binary')
 ;(global as any).btoa = (data: string) => Buffer.from(data, 'binary').toString('base64')
 
+// API logger 전역 no-op 모킹 (요청 시작/완료 부작용 및 콘솔 소음 차단)
+jest.mock('@/lib/api/logger', () => ({
+  RequestTimer: class {
+    constructor(..._args: any[]) {}
+    complete(_status: number, _metadata?: Record<string, any>) {
+      return 0
+    }
+  },
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    logRequestStart: jest.fn(),
+    logRequestComplete: jest.fn(),
+    logAuthEvent: jest.fn(),
+    logBusinessEvent: jest.fn(),
+    logPerformanceMetric: jest.fn(),
+  },
+}))
+
 // jsdom provides Request, Response, Headers
 // Only mock NextRequest and NextResponse for Next.js compatibility
 
@@ -92,9 +113,11 @@ global.console = {
   error: jest.fn(),
 }
 
-// Date.now 모의 (일관된 타임스탬프)
+// Date.now 고정 (jest.clearAllMocks()의 영향 회피 위해 순수 함수 할당)
 const mockTimestamp = new Date('2024-01-01T00:00:00.000Z').getTime()
-Date.now = jest.fn(() => mockTimestamp)
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+Date.now = () => mockTimestamp
 
 // cleanup 함수
 afterEach(() => {

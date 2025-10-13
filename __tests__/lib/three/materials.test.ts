@@ -3,12 +3,14 @@ import * as THREE from 'three'
 
 describe('Materials Library', () => {
   describe('MATERIAL_CONFIGS', () => {
-    test('should have all required materials', () => {
-      const expectedMaterials = ['wood', 'mdf', 'steel']
-      const actualMaterials = MATERIAL_CONFIGS.map(m => m.id)
+    test('should include baseline required materials and allow extensions', () => {
+      const required = ['wood', 'mdf', 'steel']
+      const actual = MATERIAL_CONFIGS.map(m => m.id)
 
-      expect(actualMaterials).toEqual(expect.arrayContaining(expectedMaterials))
-      expect(actualMaterials).toHaveLength(3)
+      // 최소 요구 소재는 포함되어야 함
+      expect(actual).toEqual(expect.arrayContaining(required))
+      // 확장 소재 허용: 전체 개수는 최소 3 이상
+      expect(actual.length).toBeGreaterThanOrEqual(required.length)
     })
 
     test('should have valid color values', () => {

@@ -1,30 +1,33 @@
 schema: 1
 story: "1.2E"
 story_title: "user_profiles 테이블 마이그레이션 완료 및 자동화"
-gate: "FAIL"
-status_reason: "마이그레이션/검증 스크립트 및 트리거 보강, 실행 로그, 테스트 근거 부재. AC1~7 다수 미충족."
+gate: "CONCERNS"
+status_reason: "드라이런 리포트와 실행 로그 테이블 스냅샷이 추가되어 증거 공백 일부 해소. 다만 트리거 예외 테스트와 실실행(로그 적재) 근거가 아직 부족함. AC3, AC6, AC7 미충족/불충분."
 reviewer: "Quinn (Test Architect)"
 updated: "2025-10-10T00:00:00Z"
 waiver: { active: false }
 top_issues:
   - id: "MIG-001"
     severity: high
-    finding: "누락 레코드 보정 스크립트 미구현(docs/scripts/* 없음)"
-    suggested_action: "migrate/check/bulk/single-user SQL 추가 및 dry-run/실행 리포트 산출"
+    finding: "누락 레코드 보정/검증 스크립트는 존재하나(templates), 실실행 로그 및 재현 가능한 보고 체계가 미흡"
+    suggested_action: "real-run 실행 후 로그 테이블에 적재, 리포트 산출물 첨부"
   - id: "TRG-002"
     severity: medium
     finding: "handle_new_user() 트리거 예외 케이스 검증/보강 미흡"
     suggested_action: "소셜/OAuth 경로 보강 및 예외시 보정 큐 처리"
   - id: "LOG-003"
     severity: medium
-    finding: "마이그레이션 실행 로깅 표준 부재"
-    suggested_action: "로그 테이블/파일 표준화 및 실행 이력 기록"
+    finding: "마이그레이션 실행 로깅 표준 설계는 제시되었으나(스냅샷), 실제 적재 근거 부족"
+    suggested_action: "로그 테이블 생성 적용 후 실제 실행 적재/스냅샷 제출"
 risk_summary:
   totals: { critical: 0, high: 1, medium: 2, low: 0 }
   recommendations:
     must_fix:
-      - "전수 검증·보정 스크립트 구현 및 dry-run 리포트 산출"
-      - "트리거 단위/통합 테스트 작성"
-      - "BFF 500 방지 시나리오 통합 테스트 추가"
+      - "실실행(real-run) 수행 및 migration_run_logs 적재 + 리포트 제출"
+      - "트리거 단위/통합 테스트 작성(이메일/OAuth/소셜 경로)"
+      - "BFF 500 방지 시나리오 통합 테스트 추가(프로필 누락 포함 케이스)"
     monitor:
       - "운영 재발 모니터링 쿼리 및 경보 구성"
+references:
+  dry_run_report: "docs/qa/reports/1.2E-dry-run-20251013.md"
+  log_table_snapshot: "docs/qa/snapshots/1.2E-execution-log-table.md"

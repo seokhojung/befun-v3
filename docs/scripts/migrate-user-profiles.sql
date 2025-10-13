@@ -1,33 +1,35 @@
--- Migration: Create missing user_profiles and user_settings for existing auth.users
--- Usage: psql -f docs/scripts/migrate-user-profiles.sql
+-- Profile Migration Script (Dry-run + Execute)
+-- Usage:
+--   -- DRY RUN
+--   --   Set DO_EXECUTE = FALSE to only report counts/diffs
+--   -- EXECUTE
+--   --   Set DO_EXECUTE = TRUE to apply changes and emit audit logs
 
-WITH missing_profiles AS (
-  SELECT u.id, u.email, u.raw_user_meta_data, u.created_at
-  FROM auth.users u
-  LEFT JOIN public.user_profiles p ON u.id = p.id
-  WHERE p.id IS NULL
-),
-inserted_profiles AS (
-  INSERT INTO public.user_profiles (id, email, full_name, created_at, updated_at)
-  SELECT id,
-         email,
-         COALESCE(raw_user_meta_data->>'full_name', email),
-         created_at,
-         created_at
-  FROM missing_profiles
-  ON CONFLICT (id) DO NOTHING
-  RETURNING id
-),
-missing_settings AS (
-  SELECT u.id, u.created_at
-  FROM auth.users u
-  LEFT JOIN public.user_settings s ON u.id = s.id
-  WHERE s.id IS NULL
-)
-INSERT INTO public.user_settings (id, created_at, updated_at)
-SELECT id, created_at, created_at
-FROM missing_settings
-ON CONFLICT (id) DO NOTHING;
+-- Parameters (adapt to your DB engine)
+-- :DO_EXECUTE BOOLEAN
 
--- Tip: To preview without changes, wrap INSERT statements with EXPLAIN or run in a transaction and ROLLBACK.
+-- 1) Discovery: rows to migrate
+-- SELECT COUNT(*) AS total_candidates FROM profiles WHERE migrated IS NULL;
+
+-- 2) Dry-run report: sample of diffs
+-- SELECT id, email, provider FROM profiles WHERE migrated IS NULL LIMIT 20;
+
+-- 3) Execution block (guarded)
+-- IF :DO_EXECUTE THEN
+--   -- Example transformation
+--   UPDATE profiles
+--   SET migrated = TRUE,
+--       updated_at = NOW()
+--   WHERE migrated IS NULL;
+--
+--   -- Audit log
+--   INSERT INTO migration_audit (name, executed_at, affected_rows)
+--   VALUES ('profile_migration', NOW(), ROW_COUNT());
+-- END IF;
+
+-- 4) Triggers/Exceptions (OAuth, social logins)
+-- -- Ensure exceptions are covered and logged
+-- -- Add testable invariants for downstream BFF/UI initialization
+
+-- Note: This file is a template; fill-in with exact table/column names.
 

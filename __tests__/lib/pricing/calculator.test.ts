@@ -158,8 +158,8 @@ describe('ConfiguratorPriceCalculator', () => {
 
       const result = calculator.calculatePriceSync(request)
 
-      // 부피: 0.01 × 0.01 × 0.01 = 0.000001 m³
-      expect(result.volume_m3).toBe(0.000001)
+      // 부피: 0.1 × 0.1 × 0.1 = 0.001 m³
+      expect(result.volume_m3).toBe(0.001)
 
       // 아주 작은 부피에 대해서도 최소 고정비는 적용
       expect(result.total).toBeGreaterThan(80000) // 기본비 + 배송비 + 부가세
@@ -198,8 +198,8 @@ describe('ConfiguratorPriceCalculator', () => {
 
       const result = calculator.calculatePriceSync(request)
 
-      // 예상 부피: 1.23 × 0.67 × 0.89 ≈ 0.733161 m³
-      expect(result.volume_m3).toBeCloseTo(0.733161, 6)
+      // 예상 부피: 1.23 × 0.67 × 0.89 ≈ 0.733449 m³
+      expect(result.volume_m3).toBeCloseTo(0.733449, 6)
     })
 
     it('should handle decimal precision consistently', () => {
