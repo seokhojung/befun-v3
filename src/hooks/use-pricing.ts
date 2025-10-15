@@ -125,35 +125,11 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
     }
   )
 
-  // 로컬 fallback 가격 계산 함수
-  const calculateFallbackPrice = useCallback((request: PriceCalculationRequest): number => {
-    const { width_cm, depth_cm, height_cm, material } = request
-
-    // 기본 계산 공식 (서버와 동일한 로직)
-    const volume_m3 = (width_cm * depth_cm * height_cm) / 1000000
-
-    const MATERIAL_DEFAULTS = {
-      wood: { basePrice: 50000, modifier: 1.0 },
-      mdf: { basePrice: 50000, modifier: 0.8 },
-      steel: { basePrice: 50000, modifier: 1.15 },
-      metal: { basePrice: 50000, modifier: 1.5 },
-      glass: { basePrice: 50000, modifier: 2.0 },
-      fabric: { basePrice: 50000, modifier: 0.8 },
-    }
-
-    const FIXED_COSTS = {
-      BASE_MANUFACTURING: 50000,
-      SHIPPING: 30000,
-      TAX_RATE: 0.1
-    }
-
-    const materialConfig = MATERIAL_DEFAULTS[material]
-    const materialCost = Math.round(volume_m3 * materialConfig.basePrice * materialConfig.modifier)
-    const subtotal = materialCost + FIXED_COSTS.BASE_MANUFACTURING + FIXED_COSTS.SHIPPING
-    const tax = Math.round(subtotal * FIXED_COSTS.TAX_RATE)
-
-    return subtotal + tax
-  }, [])
+  // 로컬 fallback 계산 제거: 서버 권위 경로 단일화
+  // 더 이상 새 가격을 로컬에서 계산하지 않으며, 이전값 유지만 허용
+  const calculateFallbackPrice = useCallback((/* request: PriceCalculationRequest */): number | null => {
+    return previousPrice ? previousPrice.total : null
+  }, [previousPrice])
 
   // 에러 처리 및 fallback
   useEffect(() => {
@@ -174,14 +150,10 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
 
       // 재시도 제한에 도달하지 않은 경우에만 fallback 처리
       if (retryCount < 5) {
-        // 네트워크 오류인 경우 fallback 가격 계산
-        if (debouncedRequest && (errorMessage.includes('fetch') || networkStatus === 'offline')) {
-          const fallback = calculateFallbackPrice(debouncedRequest)
+        // 네트워크 오류인 경우에도 이전 가격만 유지(신규 계산 금지)
+        const fallback = calculateFallbackPrice()
+        if (fallback != null) {
           setFallbackPrice(fallback)
-          setIsUsingFallback(true)
-        } else if (previousPrice) {
-          // 네트워크 오류가 아닌 경우 이전 가격 유지
-          setFallbackPrice(previousPrice.total)
           setIsUsingFallback(true)
         }
       }

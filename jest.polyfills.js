@@ -43,22 +43,35 @@ if (process.env.NODE_ENV === 'test' || typeof process?.env?.JEST_WORKER_ID !== '
   Date.now = () => fixed
 }
 
-// Minimal Request/Response polyfills
-// jsdom in Node v20 should provide these, but adding fallback
+// Safe, minimal Fetch API fallbacks ONLY if missing.
+// Keep descriptors compatible (use internal fields + getters) to avoid
+// clashing with Next.js NextRequest/NextResponse prototypes.
 if (typeof global.Request === 'undefined') {
-  // Simple mock Request class for testing
   global.Request = class Request {
     constructor(input, init = {}) {
-      this.url = typeof input === 'string' ? input : input.url
-      this.method = init.method || 'GET'
-      this.headers = new Map(Object.entries(init.headers || {}))
-      this.body = init.body || null
+      this._url = typeof input === 'string' ? input : input?.url || ''
+      this._method = init.method || 'GET'
+      this._headers = new Map(Object.entries(init.headers || {}))
+      this._body = init.body ?? null
+    }
+    get url() {
+      return this._url
+    }
+    get method() {
+      return this._method
+    }
+    get headers() {
+      return this._headers
+    }
+    get body() {
+      return this._body
     }
     async json() {
-      return this.body ? JSON.parse(this.body) : null
+      if (typeof this._body === 'string') return JSON.parse(this._body)
+      return this._body
     }
     async text() {
-      return this.body || ''
+      return this._body != null ? String(this._body) : ''
     }
   }
 }
@@ -66,19 +79,33 @@ if (typeof global.Request === 'undefined') {
 if (typeof global.Response === 'undefined') {
   global.Response = class Response {
     constructor(body, init = {}) {
-      this.body = body
-      this.status = init.status || 200
-      this.statusText = init.statusText || 'OK'
-      this.headers = new Map(Object.entries(init.headers || {}))
-      this.ok = this.status >= 200 && this.status < 300
+      this._body = body
+      this._status = init.status || 200
+      this._statusText = init.statusText || 'OK'
+      this._headers = new Map(Object.entries(init.headers || {}))
+    }
+    get body() {
+      return this._body
+    }
+    get status() {
+      return this._status
+    }
+    get statusText() {
+      return this._statusText
+    }
+    get headers() {
+      return this._headers
+    }
+    get ok() {
+      return this._status >= 200 && this._status < 300
     }
     async json() {
-      return this.body ? JSON.parse(this.body) : null
+      if (typeof this._body === 'string') return JSON.parse(this._body)
+      return this._body
     }
     async text() {
-      return this.body || ''
+      return this._body != null ? String(this._body) : ''
     }
-    // Static json() method for NextResponse compatibility
     static json(data, init = {}) {
       return new Response(JSON.stringify(data), {
         ...init,
@@ -105,13 +132,13 @@ if (typeof global.Headers === 'undefined') {
 if (typeof global.FormData === 'undefined') {
   global.FormData = class FormData {
     constructor() {
-      this.data = new Map()
+      this._data = new Map()
     }
     append(name, value) {
-      this.data.set(name, value)
+      this._data.set(name, value)
     }
     get(name) {
-      return this.data.get(name) || null
+      return this._data.get(name) || null
     }
   }
 }

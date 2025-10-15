@@ -1,0 +1,30 @@
+﻿schema: 1
+story: "2.3A.3"
+story_title: "재질 카탈로그/시드 준비"
+gate: PASS
+status_reason: "필터/정책/자산/워밍 검증 및 선택 스위트 Green"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-14T02:40:00Z"
+
+waiver:
+  active: false
+
+top_issues: []
+
+evidence:
+  tests_reviewed: 5
+  files_analyzed: 6
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "BFF 경로 필터 명확, 캐시 키 사용 상식적" }
+  performance: { status: CONCERNS, notes: "초기화 p95<500ms는 환경 의존, 워밍 후 측정 권고" }
+  reliability: { status: PASS, notes: "플레이스홀더 규칙으로 404 방지" }
+  maintainability: { status: PASS, notes: "시드/픽스처/자산 경로 체계화" }
+
+recommendations:
+  future:
+    - action: "BFF 라우트 통합 테스트(응답 스키마 포함) 추가"
+      refs: ["__tests__/api/v1/bff/"]

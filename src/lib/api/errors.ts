@@ -29,7 +29,8 @@ export class ApiException extends Error {
 // 특정 에러 타입들을 위한 편의 클래스들
 export class ValidationError extends ApiException {
   constructor(message: string, details?: any, requestId?: string) {
-    super(API_ERROR_CODES.VALIDATION_FAILED, message, 400, details, requestId)
+    // Story 2.3A.1 요구: 검증 실패 시 HTTP 422
+    super(API_ERROR_CODES.VALIDATION_FAILED, message, 422, details, requestId)
   }
 }
 
@@ -144,7 +145,7 @@ export function isApiError(error: unknown): error is ApiError {
 export function createErrorResponse(
   error: unknown,
   requestId?: string,
-  includeDetails: boolean = process.env.NODE_ENV === 'development'
+  includeDetails: boolean = (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
 ): NextResponse<ApiResponse> {
   let apiError: ApiError
   let statusCode: number
@@ -214,7 +215,7 @@ export function createSuccessResponse<T>(
 // 글로벌 에러 핸들러
 export function handleApiError(error: unknown, requestId?: string): NextResponse {
   // 에러 로깅 (향후 logger 구현 후 대체)
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
     console.error(`API Error [${requestId}]:`, error)
   }
 
@@ -239,13 +240,19 @@ export function withErrorHandling(
 // Zod 검증 에러를 API 에러로 변환
 export function transformZodError(error: any, requestId?: string): ValidationError {
   const details = error.issues?.map((issue: any) => ({
-    field: issue.path.join('.'),
+    field: issue.path?.join('.') ?? '',
     message: issue.message,
     value: issue.received,
   })) || []
 
+  // 표준 포맷: "입력값이 올바르지 않습니다: <필드명> - <사유>"
+  const first = details[0]
+  const summary = first && first.field && first.message
+    ? `입력값이 올바르지 않습니다: ${first.field} - ${first.message}`
+    : '입력값이 올바르지 않습니다.'
+
   return new ValidationError(
-    '입력값이 올바르지 않습니다.',
+    summary,
     details,
     requestId
   )

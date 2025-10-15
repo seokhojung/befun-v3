@@ -2,6 +2,7 @@
 export * from './calculator'
 export * from './policies'
 export * from '@/types/pricing'
+export * from './standard-calculator'
 
 import { priceCalculator } from './calculator'
 import { pricingPolicyManager } from './policies'

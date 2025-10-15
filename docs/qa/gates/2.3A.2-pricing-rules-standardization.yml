@@ -1,0 +1,32 @@
+﻿schema: 1
+story: "2.3A.2"
+story_title: "가격 룰 표준화 및 계산기 반영"
+gate: PASS
+status_reason: "표준 산식/상수/경로 일원화 및 테스트 그린 확인"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-14T02:10:00Z"
+
+waiver:
+  active: false
+
+top_issues: []
+
+evidence:
+  tests_reviewed: 4
+  files_analyzed: 6
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "입력 검증 및 단일 경로 위임 구조 양호" }
+  performance: { status: CONCERNS, notes: "1,000건 < 200ms 측정은 별도 성능 테스트에서 수행 예정" }
+  reliability: { status: PASS, notes: "라운딩 규칙/경로 일관성 확인" }
+  maintainability: { status: PASS, notes: "타입/상수/계산기 구조 명확" }
+
+recommendations:
+  future:
+    - action: "카트 서버 재검증 로직을 V2 DTO/표준 산식으로 이식"
+      refs: ["src/lib/cart/cart-service.ts:213"]
+    - action: "성능 시나리오(1,000건) 측정 및 보고"
+      refs: ["__tests__/performance/pricing.test.ts"]

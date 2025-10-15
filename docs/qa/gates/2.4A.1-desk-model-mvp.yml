@@ -1,0 +1,30 @@
+﻿schema: 1
+story: "2.4A.1"
+story_title: "DeskModel MVP"
+gate: PASS
+status_reason: "파라미터→기하/스냅·경계/성능 로깅 구현 및 유닛·성능 테스트 증빙 확인"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-14T03:10:00Z"
+
+waiver:
+  active: false
+
+top_issues: []
+
+evidence:
+  tests_reviewed: 4
+  files_analyzed: 4
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "입력 검증/서버 권위 원칙 명시" }
+  performance: { status: PASS, notes: "perf:desk:init_ms, perf:desk:fps_* 로깅 및 E2E 스펙 존재" }
+  reliability: { status: PASS, notes: "유닛 테스트 그린" }
+  maintainability: { status: PASS, notes: "명세/구조 명확" }
+
+recommendations:
+  future:
+    - action: "2.5A에서 인스턴싱/LOD/컬링 적용으로 성능 마진 확대"
+      refs: ["docs/stories/epic-2.5A.3d-optimization-and-observability.md"]

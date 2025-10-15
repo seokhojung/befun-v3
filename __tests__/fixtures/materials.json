@@ -1,0 +1,5 @@
+[
+  {"id":"wood","name":"Wood","type":"wood","base_price_per_unit":100,"is_active":true,"thumbnail_url":"/materials/wood.png"},
+  {"id":"mdf","name":"MDF","type":"mdf","base_price_per_unit":100,"is_active":false,"thumbnail_url":"/materials/mdf.png"}
+]
+

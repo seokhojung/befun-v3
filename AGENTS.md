@@ -1,3 +1,21 @@
+**Bmad-agents 절차를 절대 생략하거나 누락시켜서는 안된다.**
+**bmad method 워크플로우를 꼭 지켜야 한다.**
+**에이전트의 워크플로 실행 시, 명령에 해당하는 모든 태스크를 엄격히 전부 실행해야 한다.**
+**한국어로 대답하고 작업한다.**
+
+## BMAD Enforcement Policy (중요)
+
+- 공통
+  - 각 에이전트는 자신의 워크플로 태스크를 “누락 없이” 수행하고, 산출물을 문서/파일에 기록한다.
+  - 태스크 일부만 수행하거나, 기록(로그/체크리스트/파일 리스트) 없이 넘어가는 것을 금지한다.
+- Dev (develop-story)
+  - 단계: 요구 읽기 → 구현/테스트 작성 → 검증 실행(유닛/필요 시 통합, 린트/타입체크는 가능 범위 내 분리 보고) → 스토리 파일에 Dev Agent Record/변경 파일/체크박스/Change Log 반영 → 검증 전부 통과 시에만 Ready for Review로 상태 전환.
+  - 전역 회귀가 존재하면: 변경 범위 검증을 Green으로 유지하되, 전역 이슈는 별도 스토리로 보고/분리한다(스토리 내 Completion Notes에 명시).
+- PO
+  - 스토리 검증(*validate-story-draft) 결과를 스토리 본문에 “PO Validation Results” 섹션으로 남긴다. 보완 지시 후 승인.
+- SM
+  - 스토리 체크리스트(*story-checklist) 결과를 스토리 본문에 “SM Story Checklist” 섹션으로 남긴다. 자동 수정은 하지 않는다.
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization
@@ -54,12 +72,7 @@
 - Health check: `curl http://localhost:3000/api/health`
 - DB test: `curl http://localhost:3000/api/db-test`
 
-_한국어로 작업하고 대답한다._
-
 <!-- BEGIN: BMAD-AGENTS -->
-
-**\*\***Bmad-agents 절차를 절대 생략하거나 누락시켜서는 안된다. bmad method 워크플로우를 꼭 지켜야 한다.**\*
-**한국어로 대답하고 작업한다.\*\*
 
 # BMAD-METHOD Agents and Tasks
 

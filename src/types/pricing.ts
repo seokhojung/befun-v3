@@ -1,6 +1,8 @@
 // 가격 계산 시스템 전용 타입 정의
 
 export type MaterialType = 'wood' | 'mdf' | 'steel' | 'metal' | 'glass' | 'fabric'
+export type FinishType = 'matte' | 'glossy' | 'satin'
+export type TierType = 'free' | 'premium' | 'vip'
 
 export interface PricingPolicy {
   id: string
@@ -79,6 +81,54 @@ export const FIXED_COSTS = {
   SHIPPING: 30000, // 배송비 (KRW)
   TAX_RATE: 0.1, // 부가세율 (10%)
 } as const
+
+// 표준화된 가격 산식 상수 (Story 2.3A.2)
+export const BASE_PRICE_KRW = 50_000
+export const SIZE_MULTIPLIER = 1_000
+export const MATERIAL_MULTIPLIERS: Record<MaterialType, number> = {
+  wood: 1.0,
+  mdf: 0.8,
+  steel: 1.15,
+  metal: 1.5,
+  glass: 2.0,
+  fabric: 0.8,
+}
+export const FINISH_MULTIPLIERS: Record<FinishType, number> = {
+  matte: 1.0,
+  glossy: 1.2,
+  satin: 1.1,
+}
+export const TIER_MULTIPLIERS: Record<TierType, number> = {
+  free: 1.0,
+  premium: 0.95,
+  vip: 0.90,
+}
+
+// 표준화된 DTO (Story 2.3A.2)
+export interface PriceCalculationRequestV2 {
+  width_cm: number
+  depth_cm: number
+  height_cm: number
+  material: MaterialType
+  finish: FinishType
+  tier: TierType
+  quantity: number
+}
+
+export interface PriceCalculationResponseV2 {
+  volume_m3: number
+  components: {
+    base: number
+    size: number
+    material: number
+    finish: number
+    tier: number
+  }
+  unit_price: number
+  quantity: number
+  line_total: number
+  currency: 'KRW'
+}
 
 // 가격 계산 유틸리티 타입
 export interface VolumeCalculation {
