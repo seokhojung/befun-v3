@@ -12,7 +12,7 @@ const customJestConfig = {
   testEnvironment: 'jsdom',
 
   // 설정 파일들
-  setupFiles: ['<rootDir>/jest.polyfills.js'],
+  setupFiles: ['./jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
 
   // 모듈 경로 매핑 (Next.js 경로 별칭과 동일)

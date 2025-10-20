@@ -130,10 +130,10 @@ export function NavigationBar() {
                 홈
               </button>
               <button
-                disabled
-                className="text-gray-400 px-3 py-2 text-sm font-medium cursor-not-allowed"
+                onClick={() => router.push('/configurator')}
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
               >
-                3D 컨피규레이터 (곧 출시)
+                3D 컨피규레이터
               </button>
             </div>
           </div>

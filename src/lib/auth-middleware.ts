@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { supabase } from './supabase'
+import { isMockMode } from '@/lib/utils/env-check'
+import { mockGetUser } from '@/lib/utils/mock-auth'
 
 // 보호된 경로들
 const PROTECTED_ROUTES = [
   '/profile',
   '/dashboard',
-  '/configurator', // 3D 컨피규레이터 (향후)
+  // '/configurator'는 퍼블릭 접근 허용으로 전환(QA Fix 2025-10-20)
   '/saved-designs', // 저장된 디자인 (향후)
 ]
 
@@ -114,7 +116,13 @@ async function checkAuthentication(request: NextRequest): Promise<boolean> {
       return false
     }
 
-    // Supabase를 통한 토큰 검증
+    // Dev(Mock) 환경: mock 토큰은 mock 인증으로 검증
+    if (isMockMode() && token.startsWith('mock-token-')) {
+      const { data, error } = await mockGetUser(token)
+      return !error && !!data.user
+    }
+
+    // Supabase를 통한 토큰 검증 (실환경/일반 토큰)
     const { data, error } = await supabase.auth.getUser(token)
 
     if (error || !data.user) {

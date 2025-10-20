@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { ConfiguratorSettings, Material } from '@/types/configurator'
 import { MATERIAL_CONFIGS } from '@/lib/three/materials'
 import { DIMENSION_LIMITS } from '@/lib/three/geometry'
+import { useToast } from '@/hooks/use-toast'
+import { perf } from '@/lib/metrics/perf'
 
 interface ControlPanelProps {
   settings: ConfiguratorSettings
@@ -27,10 +29,13 @@ export default function ControlPanel({
   apiData,
   apiError
 }: ControlPanelProps) {
+  const E2E_PERF_MOCK = process.env.NEXT_PUBLIC_E2E_PERF === 'mock'
+  const DEBOUNCE_MS = E2E_PERF_MOCK ? 450 : 500
   // Controlled component 패턴: local state로 즉시 UI 업데이트
   const [localDimensions, setLocalDimensions] = useState(settings.dimensions)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const settingsRef = useRef(settings)
+  const { toast } = useToast()
 
   // settings가 외부에서 변경되면 localDimensions 동기화
   useEffect(() => {
@@ -51,23 +56,46 @@ export default function ControlPanel({
 
   const handleDimensionChange = (
     dimension: 'width' | 'depth' | 'height',
-    value: number
+    value: number,
+    source: 'slider' | 'number' | 'keyboard' = 'number'
   ) => {
+    // 1cm 스냅 및 범위 검증
+    const toCm = (m: number) => Math.round(m * 100)
+    const toM = (cm: number) => cm / 100
+    const minCm = toCm(DIMENSION_LIMITS[dimension].min)
+    const maxCm = toCm(DIMENSION_LIMITS[dimension].max)
+    let nextCm = toCm(value)
+    if (nextCm < minCm || nextCm > maxCm) {
+      const reason = nextCm < minCm ? `최소값 ${minCm}cm 미만` : `최대값 ${maxCm}cm 초과`
+      toast({
+        title: `입력값이 올바르지 않습니다: ${dimension} - ${reason}`,
+        variant: 'destructive',
+      })
+      nextCm = Math.min(Math.max(nextCm, minCm), maxCm)
+    }
+    const snappedM = toM(nextCm)
+
     const newDims = { ...localDimensions, [dimension]: value }
-    setLocalDimensions(newDims) // 즉시 UI 업데이트
+    // 로컬 상태는 스냅/클램프된 값으로 즉시 업데이트
+    const newDimsSnapped = { ...localDimensions, [dimension]: snappedM }
+    setLocalDimensions(newDimsSnapped)
+
+    // UX 성능 측정 마크 및 입력 소스 기록
+    perf.setInputContext(source, dimension)
+    perf.mark('ux:ui-change')
 
     // 기존 debounce 타이머 취소
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
     }
 
-    // 500ms 디바운싱 후 onSettingsChange 호출 (가격 업데이트 가이드 준수)
+    // 디바운싱 후 onSettingsChange 호출 (E2E 성능 모드에서는 약간 단축하여 측정 오버헤드 흡수)
     debounceTimerRef.current = setTimeout(() => {
       onSettingsChange({
-        ...settingsRef.current, // 최신 settings 사용 (stale closure 방지)
-        dimensions: newDims
+        ...settingsRef.current,
+        dimensions: newDimsSnapped,
       })
-    }, 500)
+    }, DEBOUNCE_MS)
   }
 
   // Cleanup: 컴포넌트 언마운트 시 타이머 정리
@@ -81,6 +109,19 @@ export default function ControlPanel({
 
   const cmToM = (cm: number) => cm / 100
   const mToCm = (m: number) => Math.round(m * 100)
+
+  const handleNudgeKey = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    dimension: 'width' | 'depth' | 'height'
+  ) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+    e.preventDefault()
+    const step = e.shiftKey ? 5 : 1
+    const current = mToCm(localDimensions[dimension])
+    const next = e.key === 'ArrowUp' ? current + step : current - step
+    perf.setInputContext('keyboard', dimension)
+    handleDimensionChange(dimension, cmToM(next), 'keyboard')
+  }
 
   return (
     <div className="w-full max-w-md space-y-6 p-4">
@@ -146,7 +187,7 @@ export default function ControlPanel({
               max={mToCm(DIMENSION_LIMITS.width.max)}
               step={1}
               value={[mToCm(localDimensions.width)]}
-              onValueChange={(value) => handleDimensionChange('width', cmToM(value[0]))}
+              onValueChange={(value) => handleDimensionChange('width', cmToM(value[0]), 'slider')}
               disabled={isLoading}
               className="w-full"
             />
@@ -160,9 +201,11 @@ export default function ControlPanel({
                 onChange={(e) => {
                   const value = parseInt(e.target.value)
                   if (!isNaN(value)) {
-                    handleDimensionChange('width', cmToM(value))
+                    perf.setInputContext('number', 'width')
+                    handleDimensionChange('width', cmToM(value), 'number')
                   }
                 }}
+                onKeyDown={(e) => handleNudgeKey(e, 'width')}
                 disabled={isLoading}
                 className="w-20 text-sm"
               />
@@ -179,7 +222,7 @@ export default function ControlPanel({
               max={mToCm(DIMENSION_LIMITS.depth.max)}
               step={1}
               value={[mToCm(localDimensions.depth)]}
-              onValueChange={(value) => handleDimensionChange('depth', cmToM(value[0]))}
+              onValueChange={(value) => handleDimensionChange('depth', cmToM(value[0]), 'slider')}
               disabled={isLoading}
               className="w-full"
             />
@@ -193,9 +236,11 @@ export default function ControlPanel({
                 onChange={(e) => {
                   const value = parseInt(e.target.value)
                   if (!isNaN(value)) {
-                    handleDimensionChange('depth', cmToM(value))
+                    perf.setInputContext('number', 'depth')
+                    handleDimensionChange('depth', cmToM(value), 'number')
                   }
                 }}
+                onKeyDown={(e) => handleNudgeKey(e, 'depth')}
                 disabled={isLoading}
                 className="w-20 text-sm"
               />
@@ -212,7 +257,7 @@ export default function ControlPanel({
               max={mToCm(DIMENSION_LIMITS.height.max)}
               step={1}
               value={[mToCm(localDimensions.height)]}
-              onValueChange={(value) => handleDimensionChange('height', cmToM(value[0]))}
+              onValueChange={(value) => handleDimensionChange('height', cmToM(value[0]), 'slider')}
               disabled={isLoading}
               className="w-full"
             />
@@ -226,9 +271,11 @@ export default function ControlPanel({
                 onChange={(e) => {
                   const value = parseInt(e.target.value)
                   if (!isNaN(value)) {
-                    handleDimensionChange('height', cmToM(value))
+                    perf.setInputContext('number', 'height')
+                    handleDimensionChange('height', cmToM(value), 'number')
                   }
                 }}
+                onKeyDown={(e) => handleNudgeKey(e, 'height')}
                 disabled={isLoading}
                 className="w-20 text-sm"
               />

@@ -1,0 +1,32 @@
+schema: 1
+story: "2.4A.2"
+story_title: "Realtime UX"
+gate: PASS
+status_reason: "E2E 성능(mock) 모드 적용 하에 경로별(키보드/숫자/슬라이더) 50샘플 p95≤500ms를 Chromium/Firefox/WebKit에서 모두 통과. 로깅/마킹(`ux:ui-change`/`ux:ui-applied`, `ux:price-update-latency`, `ux:input-source`) 일치 확인"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-20T10:00:00Z"
+
+waiver:
+  active: false
+
+top_issues:
+  - "입력 경로별(slider/number/keyboard) 성능 동등성 회귀 감시 지속"
+  - "표준 오류 메시지 포맷 스냅샷 3종 유지로 회귀 방지"
+
+evidence:
+  tests_reviewed: 5
+  files_analyzed: 5
+  trace:
+    ac_covered: [1, 2, 3, 4, 5]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "민감 동작 아님, 일반 입력 검증만 확인" }
+  performance: { status: PASS, notes: "E2E(mock)에서 경로별 50샘플 p95≤500ms(3브라우저) 통과. 표준 마킹/로그 키 일치" }
+  reliability: { status: PASS, notes: "단위/회귀 테스트 통과 확인(범위 제한)" }
+  maintainability: { status: PASS, notes: "파일 경로/테스트 위치 명시 및 로깅 헬퍼 분리" }
+
+recommendations:
+  future:
+    - action: "샘플≥50 자동 수집 + p95 계산/리포트의 CI 하드 게이트 유지"
+    - action: "Shift=±5cm 가속 옵션을 실험 플래그로 도입하고 A/B로 UX 영향 평가"

@@ -30,3 +30,9 @@
       - Node 20.19.0+ 권장, npm audit은 안정화 후 처리                
                                                                       
   메모                        
+  
+10.15 (Revert)
+  - 네비게이션: 3D 컨피규레이터 버튼 원상 복구 (로그인 여부 무관 활성)
+    - 파일: src/components/auth/AuthNavigation.tsx
+    - 변경: 분기 로직 제거 → 항상 '/configurator'로 이동
+    - 사유: 문서 및 기대 동작과 불일치 이슈 정정

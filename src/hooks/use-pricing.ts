@@ -34,7 +34,55 @@ interface UsePricingResult {
 }
 
 // API 호출 함수
+const isE2EPerfMock = process.env.NEXT_PUBLIC_E2E_PERF === 'mock'
+
+const mockComputePrice = async (request: PriceCalculationRequest): Promise<PriceCalculationResponse> => {
+  const volume_m3 = (request.width_cm / 100) * (request.depth_cm / 100) * (request.height_cm / 100)
+  const base = 50_000
+  const shipping = 30_000
+  const materialModifiers: Record<MaterialType, number> = {
+    wood: 1.0,
+    mdf: 0.8,
+    steel: 1.15,
+    metal: 1.5,
+    glass: 2.0,
+    fabric: 0.8,
+  }
+  const materialMod = materialModifiers[request.material]
+  const material_cost = Math.round(volume_m3 * 1_000_000 * materialMod) // 임의 산식(안정적)
+  const base_price = base
+  const subtotal = base_price + material_cost + shipping
+  const tax = Math.round(subtotal * 0.1)
+  const total = subtotal + tax
+  // 약간의 처리지연(10ms)으로 비동기 응답 시뮬레이션
+  await new Promise(res => setTimeout(res, 10))
+  return {
+    base_price,
+    material_cost,
+    shipping_cost: shipping,
+    subtotal,
+    tax,
+    total,
+    volume_m3,
+    material_info: { type: request.material, modifier: materialMod },
+    breakdown: {
+      volume_m3,
+      base_cost: base_price,
+      material_cost,
+      shipping_cost: shipping,
+      subtotal,
+      tax,
+      total,
+      material_info: { type: request.material, modifier: materialMod, base_price_per_m3: 0 },
+    },
+    calculated_at: new Date().toISOString(),
+  }
+}
+
 const fetchPrice = async (request: PriceCalculationRequest): Promise<PriceCalculationResponse> => {
+  if (isE2EPerfMock) {
+    return mockComputePrice(request)
+  }
   const response = await fetch('/api/v1/pricing/calculate', {
     method: 'POST',
     headers: {
@@ -69,7 +117,7 @@ const createCacheKey = (request: PriceCalculationRequest | null): string | null 
  */
 export const usePricing = (options: UsePricingOptions = {}): UsePricingResult => {
   const {
-    debounceMs = 500,
+    debounceMs = isE2EPerfMock ? 0 : 500,
     cacheEnabled = true,
     estimateOnly = false,
     onPriceChange,

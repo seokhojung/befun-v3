@@ -55,8 +55,16 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // errors helpers to plain Response
 jest.mock('@/lib/api/errors', () => ({
-  createSuccessResponse: jest.fn((data: any) => new Response(JSON.stringify({ success: true, data }), { status: 200, headers: { 'Content-Type': 'application/json' } })),
-  createErrorResponse: jest.fn((error: any) => new Response(JSON.stringify({ success: false, error: String(error?.message || error) }), { status: 500, headers: { 'Content-Type': 'application/json' } })),
+  createSuccessResponse: jest.fn((data: any) => ({
+    status: 200,
+    headers: new Map<string, string>(),
+    async json() { return { success: true, data } },
+  })),
+  createErrorResponse: jest.fn((error: any) => ({
+    status: 500,
+    headers: new Map<string, string>(),
+    async json() { return { success: false, error: String(error?.message || error) } },
+  })),
   withErrorHandling: jest.fn((handler: any) => async (request: any, context?: any) => handler(request, context)),
   AuthenticationError: class extends Error { constructor(message?: string) { super(message); this.name = 'AuthenticationError' } },
 }))

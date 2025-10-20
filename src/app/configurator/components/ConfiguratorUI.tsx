@@ -10,6 +10,8 @@ import { SceneObjects, ConfiguratorSettings, Material } from '@/types/configurat
 import { DEFAULT_DIMENSIONS } from '@/lib/three/geometry'
 import { getDefaultMaterial, MATERIAL_CONFIGS } from '@/lib/three/materials'
 import { usePricing } from '@/hooks/use-pricing'
+import { Toaster } from '@/components/ui/toaster'
+import { perf } from '@/lib/metrics/perf'
 import type { MaterialType } from '@/types/pricing'
 import type { CartItemData } from '@/types/cart'
 
@@ -82,6 +84,11 @@ export default function ConfiguratorUI() {
     estimateOnly: false,
     onPriceChange: (newPrice, oldPrice) => {
       console.log('Price updated:', { newPrice: newPrice.total, oldPrice: oldPrice?.total })
+      // UX 성능 측정: UI 적용 시점 마크 및 지연 기록
+      perf.mark('ux:ui-applied')
+      perf.measureAndLog('ux:price-update-latency', 'ux:ui-change', 'ux:ui-applied', {
+        price_total: newPrice.total,
+      })
     },
     onError: (error) => {
       console.error('Pricing error:', error)
@@ -453,6 +460,8 @@ export default function ConfiguratorUI() {
             apiData={apiData}
             apiError={apiError}
           />
+          {/* 표준 토스트 UI */}
+          <Toaster />
         </div>
       </div>
     </div>

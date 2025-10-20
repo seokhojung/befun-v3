@@ -5,6 +5,8 @@ import type { User, Session } from '@/types/auth'
 import type { AuthenticatedContext } from '@/types/api'
 import { AuthenticationError, AuthorizationError } from './errors'
 import { logger } from './logger'
+import { isMockMode } from '@/lib/utils/env-check'
+import { mockGetUser } from '@/lib/utils/mock-auth'
 
 // Supabase 클라이언트 생성
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -62,6 +64,29 @@ export async function extractUserFromToken(token: string): Promise<{
   session: Session
 }> {
   try {
+    // Dev(Mock) 환경: mock 토큰은 mock 인증으로 검증
+    if (isMockMode() && token.startsWith('mock-token-')) {
+      const { data, error } = await mockGetUser(token)
+      if (error || !data.user) {
+        throw new AuthenticationError('유효하지 않은 Mock 토큰입니다')
+      }
+
+      const session: Session = {
+        access_token: token,
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        refresh_token: '',
+        user: data.user as unknown as User,
+      }
+
+      return {
+        user: data.user as unknown as User,
+        session,
+      }
+    }
+
+    // Supabase 실 토큰 검증 (프로덕션/일반 경로)
     const { data, error } = await supabase.auth.getUser(token)
 
     if (error || !data.user) {

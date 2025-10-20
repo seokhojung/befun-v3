@@ -1,0 +1,15 @@
+schema: 1
+story: "2.1"
+story_title: "3D 컨피규레이터 기반 구조 구축"
+gate: "PASS"
+status_reason: "Mock 인증 토큰 경로 보강(isMockMode + mockGetUser) 이후, 로그인 → /configurator 접근 시 재로그인 루프 미재현. BFF 호출 200 응답 확인."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-15T00:00:00Z"
+waiver: { active: false }
+top_issues: []
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 0 }
+  recommendations:
+    monitor:
+      - "프로덕션 실 Supabase 경로 회귀 없이 정상 동작 지속 확인"
+      - "성능 초기화 ≤3s 실측 로그 캡처 후 문서화"

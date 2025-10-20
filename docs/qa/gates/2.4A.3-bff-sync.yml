@@ -1,0 +1,33 @@
+schema: 1
+story: "2.4A.3"
+story_title: "BFF Sync"
+gate: PASS
+status_reason: "스키마(Zod) 강제 및 필수 키 포함, 워밍/캐시 경로 로깅 증빙, 히트/미스/리빌드 3경로 테스트 녹색, 초기 요청군(샘플≥50) p95 < 500ms 리포트 첨부 확인"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-20T12:00:00Z"
+
+waiver:
+  active: false
+
+top_issues:
+  - "PO 확정 필수 키 스키마(Zod)로 강제 및 테스트 파셜 매치 추가"
+  - "`warmup:materials:list`(1회/부팅, TTL/사이즈) 및 `bff:materials:cache:hit|miss|rebuild` 로그/메트릭 수집"
+  - "캐시 미스/TTL 만료/리빌드 경로 통합 테스트로 지연 상한과 정상 동작 증빙"
+
+evidence:
+  tests_reviewed: 3
+  files_analyzed: 6
+  trace:
+    ac_covered: [1, 2]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "JWT/CSRF 정책 유지, 서버측 스키마 검증 준수" }
+  performance: { status: PASS, notes: "초기 요청군(샘플≥50) p95 < 500ms 리포트 및 히트 경로 증빙 확인" }
+  reliability: { status: PASS, notes: "TTL 만료/미스/리빌드 3경로 테스트 및 폴백 동작 증빙 확인" }
+  maintainability: { status: PASS, notes: "타입/스키마 분리와 테스트 경로 명시로 유지보수성 양호" }
+
+recommendations:
+  future:
+    - action: "CI에서 p95 리포트/로그 자동 보관 및 게이트 하드 체크 유지"
+    - action: "스키마 변경 시 하위 호환 파셜 스냅샷 업데이트 절차 고정"
