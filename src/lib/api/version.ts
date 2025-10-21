@@ -300,7 +300,7 @@ export function getVersionInfo(): {
   deprecated: Record<ApiVersion, string | null>
   features: ApiFeature[]
 } {
-  const deprecated: Record<ApiVersion, string | null> = {}
+  const deprecated: Record<ApiVersion, string | null> = { v1: null }
 
   SUPPORTED_VERSIONS.forEach(version => {
     const deprecationDate = VERSION_DEPRECATION[version]

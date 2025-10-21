@@ -2,6 +2,8 @@
  * @jest-environment node
  */
 
+// @ts-nocheck
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { makeNextRequest } = require('../../../helpers/next-request')
 
@@ -105,3 +107,6 @@ describe('BFF Configurator initialization (2.4A.3)', () => {
     expect(setCachedData).toHaveBeenCalled()
   })
 })
+
+export {}
+

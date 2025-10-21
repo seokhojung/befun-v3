@@ -35,7 +35,15 @@ Legend
 
 - Epic: docs/stories/epic-3.3A.configurator-bff-contract.md
 - Stories
-  - docs/stories/3.3A.1.bff-contract-ordering.story.md — Status: draft
+ - docs/stories/3.3A.1.bff-contract-ordering.story.md — Status: draft
+
+6. 3.4A — 전역 타입/품질 안정화
+
+- Epic: docs/stories/epic-3.4A.global-type-stability.md
+- Stories
+  - docs/stories/3.4A.1.global-type-check-fix.story.md — Status: Ready for Dev
+
+---
 
 비고
 
@@ -44,7 +52,9 @@ Legend
 
   2.1 core - 컨피규레이터 모두 접속 가능. 로그인 후 컨피규레이터 접근시 로그인 재요청들어옴. 디버깅 완료
 
-  3.3a ->2.5a ->3.2a 순으로 진행
+  작업 순서(진행 계획)
+  - 병행(권장): (Infra) docs/stories/3.4A.1.global-type-check-fix.story.md || (Feature) docs/stories/3.3A.1.bff-contract-ordering.story.md → 2.5A → 3.2A
+  - 단일 트랙: 3.4A.1 → 3.3A.1 → 2.5A → 3.2A
 
   10.20
 
@@ -52,12 +62,14 @@ Legend
 
 파일: docs/stories/3.3A.1.bff-contract-ordering.story.md
 Status: InProgress 유지
+
 Dev Agent Record/Change Log/파일 목록 갱신
 Tasks / Subtasks 진행 표시:
 라우트 계약 정렬
 쿼리 순서 고정
 계약 테스트 추가
 구조 정합/품질 게이트(전역 lint/type/coverage 통과 후 체크 예정)
+
 다음 단계 제안
 
 전체 검증 실행 여부
@@ -66,3 +78,4 @@ npm run lint, npm run type-check, npm test 전체
 모든 검증 Green 시 체크박스 완료 → Story Status: Ready for Review 전환
 QA 자문(선택)
 test-design/trace/risk-profile 중 선택 실행해 문서화
+

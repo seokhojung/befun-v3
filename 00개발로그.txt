@@ -36,3 +36,14 @@
     - 파일: src/components/auth/AuthNavigation.tsx
     - 변경: 분기 로직 제거 → 항상 '/configurator'로 이동
     - 사유: 문서 및 기대 동작과 불일치 이슈 정정
+
+10.21
+  - 1.2E Dev: 드라이런/실행 로그/트리거 예외 테스트
+    - 11:45 Slice 6 시작 — 타입 오류 재현 및 범위 스캔 (tsc --noEmit --incremental false)
+    - 11:50 오류 분류 — ZodError 접근, z.record 시그니처, drawings 권한/레이트리미터, UI 타입 불일치
+    - 12:20 패치 — checkout/redirect ZodError(.issues), drawings 에러/레이트리미터/관리자 클라 경로 보정
+    - 12:40 패치 — pricing/calculate 암시 any 제거 및 응답 헬퍼 시그니처 정합화
+    - 13:00 패치 — designs 권한 문자열/조인 타입 안전화, status 관리자 분기 타입 경고 제거
+    - 13:20 패치 — UI 훅/컴포넌트(use_cache/estimate_only 제거, 응답 필드 교정), ThreeCanvas ref 타입 보정
+    - 13:25 전역 타입체크 — Green (0 errors)
+    - 13:30 스토리 업데이트 — 3.4A.1.story Slice 6 Dev 업데이트/파일 리스트/체크박스/Change Log 기록

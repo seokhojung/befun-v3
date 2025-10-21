@@ -1,0 +1,50 @@
+schema: 1
+story: '3.3A.1'
+story_title: '3.3A.1 BFF 응답 스키마/쿼리 순서 정렬 (Brownfield Story)'
+gate: CONCERNS
+status_reason: '상태가 InProgress로 Review 전제 미충족이며 __order 관측 개선 필요. 기능/계약은 충족.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-20T23:51:23.2793608Z'
+
+top_issues:
+  - id: QA-3.3A.1-ORDER-OBS
+    title: 동적 쿼리 순서 관측가능성 부족(__order 기본값 의존)
+    severity: medium
+    recommendation: 각 테이블 조회 직후 __order.push('<table>') 기록 및 테스트에 queryOrder 검증 추가
+    suggested_owner: dev
+
+waiver:
+  active: false
+
+quality_score: 90
+expires: '2025-11-03T23:51:23.2823594Z'
+
+evidence:
+  tests_reviewed: 3
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2]
+    ac_gaps: [3]
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: 인증 선택적 처리와 서버측 ENV 사용, 민감 로직 분리
+  performance:
+    status: CONCERNS
+    notes: 캐시 로깅은 있으나 SLI/슬로우로그 부재(후속 스토리에서 보강 권장)
+  reliability:
+    status: PASS
+    notes: 경고 축적/기본값 폴백/에러 로깅 존재
+  maintainability:
+    status: PASS
+    notes: 스키마/테스트 구조 명확, __order 기록 개선 여지
+
+recommendations:
+  immediate:
+    - action: '__order 실제 기록 및 테스트에 관측 검증 추가'
+      refs: ['src/app/api/v1/bff/configurator/route.ts','__tests__/api/v1/bff/configurator.contract.test.ts']
+  future:
+    - action: '성능 SLI/슬로우 로그, P95 계측 추가'
+      refs: ['src/lib/api/logger.ts','src/lib/api/performance.ts']
+

@@ -132,10 +132,10 @@ export class ExternalShoppingMallAPI {
 
       return result
 
-    } catch (error) {
+    } catch (error: any) {
       clearTimeout(timeoutId)
 
-      if (error.name === 'AbortError') {
+      if (error?.name === 'AbortError') {
         throw new CartServiceError(
           `API call timeout after ${this.config.timeout}ms`,
           'TIMEOUT_ERROR'

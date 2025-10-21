@@ -161,9 +161,7 @@ export const usePricing = (options: UsePricingOptions = {}): UsePricingResult =>
   const { data: priceData, error: swrError, mutate } = useSWR(
     cacheKey,
     () => debouncedRequest ? fetchPrice({
-      ...debouncedRequest,
-      use_cache: cacheEnabled,
-      estimate_only: estimateOnly
+      ...debouncedRequest
     }) : null,
     {
       revalidateOnFocus: false,

@@ -231,8 +231,8 @@ async function handleGet(request: NextRequest) {
     // 인증된 사용자에게는 추가 정보 제공
     if (authContext) {
       // 관리자에게는 더 자세한 정보 제공
-      const userRole = 'user' // 실제로는 DB에서 조회
-      if (userRole === 'admin' || userRole === 'superadmin') {
+      const userRole: 'user' | 'admin' | 'superadmin' = 'user' // 실제로는 DB에서 조회
+      if (userRole !== 'user') {
         // 관리자 전용 추가 정보
         (statusResponse as any).admin_info = {
           active_sessions: 'N/A', // 실제로는 활성 세션 수

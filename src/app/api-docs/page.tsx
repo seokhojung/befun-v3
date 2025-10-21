@@ -224,7 +224,7 @@ export default function ApiDocsPage() {
             API Reference
           </h2>
           <div ref={containerRef} className="swagger-container">
-            <SwaggerUI {...swaggerConfig} />
+            <SwaggerUI {...(swaggerConfig as any)} />
           </div>
         </section>
       </main>

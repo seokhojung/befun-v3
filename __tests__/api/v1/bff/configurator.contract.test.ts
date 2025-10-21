@@ -2,6 +2,8 @@
  * @jest-environment node
  */
 
+// @ts-nocheck
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { makeNextRequest } = require('../../../helpers/next-request')
 
@@ -102,5 +104,11 @@ describe('BFF Configurator contract and query ordering (3.3A.1)', () => {
     const expected = ['materials', 'pricing_rules', 'saved_designs', 'user_profiles']
     const observed = Array.isArray((data as any).__order) ? (data as any).__order : []
     expect(observed).toEqual(expected)
+    // 추가 검증(관측 가능 시): 실제 DB 쿼리 순서 관측값도 동일해야 함
+    if (Array.isArray(queryOrder) && queryOrder.length > 0) {
+      expect(queryOrder).toEqual(expected)
+    }
   })
 })
+
+export {}

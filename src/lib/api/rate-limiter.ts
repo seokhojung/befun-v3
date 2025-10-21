@@ -14,7 +14,7 @@ interface RateLimitEntry {
 
 class MemoryRateLimitStore {
   private store = new Map<string, RateLimitEntry>()
-  private cleanupInterval: NodeJS.Timer | null = null
+  private cleanupInterval: NodeJS.Timeout | null = null
 
   constructor() {
     // 5분마다 만료된 항목 정리
@@ -510,3 +510,6 @@ export function comprehensiveRateLimit(
 export function cleanupRateLimit(): void {
   rateLimitStore.destroy()
 }
+
+// 호환 alias (일부 경로에서 rateLimiter 이름으로 임포트)
+export { rateLimit as rateLimiter }

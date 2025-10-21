@@ -26,7 +26,7 @@ const updateDesignSchema = z.object({
     color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
     finish: z.enum(['matte', 'glossy', 'satin']).optional(),
   }).optional(),
-  custom_specs: z.record(z.any()).optional(),
+  custom_specs: z.record(z.string(), z.any()).optional(),
   tags: z.array(z.string().max(20)).max(10).optional(),
   is_public: z.boolean().optional(),
   status: z.enum(['draft', 'completed', 'ordered', 'archived']).optional(),
@@ -104,7 +104,7 @@ async function handleGet(
       name: design.name,
       description: design.description,
       user_id: design.user_id,
-      user_email: design.user_profiles?.email,
+      user_email: (design as any).user_profiles?.email,
       created_at: design.created_at,
       updated_at: design.updated_at,
       status: design.status || 'draft',
@@ -184,7 +184,7 @@ async function handlePut(
     const authContext = await authenticateRequest(request, requestId)
 
     // 리소스 소유권 확인
-    await authorizeResourceAccess(authContext, 'design', id, 'design:update')
+    await authorizeResourceAccess(authContext, 'design', id, 'design:write')
 
     // 요청 본문 검증
     const requestBody = await validateRequestBody(request, updateDesignSchema, requestId)

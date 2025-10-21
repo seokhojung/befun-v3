@@ -16,9 +16,7 @@ const addToCartSchema = z.object({
     width_cm: z.number().min(60).max(300, '너비는 60-300cm 범위여야 합니다'),
     depth_cm: z.number().min(40).max(200, '깊이는 40-200cm 범위여야 합니다'),
     height_cm: z.number().min(60).max(120, '높이는 60-120cm 범위여야 합니다'),
-    material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'], {
-      errorMap: () => ({ message: '지원되는 재료를 선택해주세요' })
-    }),
+    material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'] as const),
     calculated_price: z.number().min(0, '가격은 0 이상이어야 합니다'),
     price_breakdown: z.object({
       base_price: z.number(),
@@ -112,7 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AddToCart
         message: '입력 데이터가 올바르지 않습니다',
         error: {
           code: 'VALIDATION_ERROR',
-          details: error.errors
+          details: (error as any).errors ?? error.issues
         }
       }, { status: 400 })
     }

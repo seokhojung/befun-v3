@@ -2,8 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { ApiHandler, AuthenticatedContext, ApiEndpointConfig } from '@/types/api'
 import { createErrorResponse, createSuccessResponse, withErrorHandling } from './errors'
-import { authenticateRequest, optionalAuthentication, authenticateApiKey, Permission } from './auth'
-import { checkRateLimit, getRateLimitHeaders, shouldBypassRateLimit, RateLimitConfig } from './rate-limiter'
+import { authenticateRequest, optionalAuthentication, authenticateApiKey } from './auth'
+import { checkRateLimit, getRateLimitHeaders, shouldBypassRateLimit } from './rate-limiter'
+import type { RateLimitConfig } from '@/types/api'
 import { validateCSRFToken, getCSRFTokenFromHeaders } from '../csrf'
 import { processApiVersion, addVersionHeaders } from './version'
 import { RequestTimer, logger } from './logger'
@@ -13,7 +14,7 @@ import { CONFIG } from '@/config/api'
 interface MiddlewareOptions {
   authentication?: {
     required: boolean
-    permissions?: Permission[]
+    permissions?: string[]
     allowApiKey?: boolean
   }
   rateLimit?: RateLimitConfig | keyof typeof CONFIG.RATE_LIMITS
@@ -219,7 +220,8 @@ export function createApiMiddleware(options: MiddlewareOptions = {}) {
           }
         } else if (mergedOptions.authentication?.required === false) {
           // 선택적 인증
-          authContext = await optionalAuthentication(request, requestId)
+          const optional = await optionalAuthentication(request, requestId)
+          authContext = optional || undefined
         }
 
         // 7. 핸들러 실행

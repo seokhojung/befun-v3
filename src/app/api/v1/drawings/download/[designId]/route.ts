@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: { designId
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      throw new UnauthorizedError('Authentication required', undefined, requestId)
+      throw new UnauthorizedError('Authentication required', requestId)
     }
 
     // Validate path params
@@ -43,12 +43,12 @@ export async function GET(request: NextRequest, { params }: { params: { designId
       .single()
 
     if (designError || !design) {
-      throw new NotFoundError('Design not found', undefined, requestId)
+      throw new NotFoundError('Design not found', requestId)
     }
 
     // Verify ownership
     if (design.user_id !== user.id) {
-      throw new UnauthorizedError('You do not have permission to download this drawing', undefined, requestId)
+      throw new UnauthorizedError('You do not have permission to download this drawing', requestId)
     }
 
     // Check if drawing exists

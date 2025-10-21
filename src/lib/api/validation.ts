@@ -58,9 +58,7 @@ const designOptionsSchema = z.object({
   width_cm: z.number().min(10, '너비는 최소 10cm 이상이어야 합니다').max(500, '너비는 최대 500cm까지 가능합니다'),
   depth_cm: z.number().min(10, '깊이는 최소 10cm 이상이어야 합니다').max(500, '깊이는 최대 500cm까지 가능합니다'),
   height_cm: z.number().min(10, '높이는 최소 10cm 이상이어야 합니다').max(300, '높이는 최대 300cm까지 가능합니다'),
-  material: z.enum(['wood', 'metal', 'glass', 'fabric'], {
-    errorMap: () => ({ message: '지원되지 않는 재질입니다' }),
-  }),
+  material: z.enum(['wood', 'metal', 'glass', 'fabric'] as const),
   color: z.string().regex(/^#[0-9A-F]{6}$/i, '올바른 색상 코드 형식이 아닙니다'),
   finish: z.enum(['matte', 'glossy', 'satin']).optional(),
 })
@@ -87,9 +85,7 @@ export const BusinessSchemas = {
       .int('정수(cm)만 허용합니다')
       .min(40, '높이는 최소 40cm 이상이어야 합니다')
       .max(120, '높이는 최대 120cm까지 가능합니다'),
-    material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'], {
-      errorMap: () => ({ message: '지원되지 않는 재질입니다' }),
-    }),
+    material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'] as const),
     finish: z.enum(['matte', 'glossy', 'satin']).optional(),
     color: z.string().regex(/^#[0-9A-F]{6}$/i, '올바른 색상 코드 형식이 아닙니다'),
   }),

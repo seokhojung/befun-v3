@@ -11,6 +11,7 @@ import { CONFIG } from '@/config/api'
 import { DESK_MODEL_SPEC } from '@/types/desk'
 import { BASE_PRICE_KRW, SIZE_MULTIPLIER, MATERIAL_MULTIPLIERS, FINISH_MULTIPLIERS } from '@/types/pricing'
 import { ConfiguratorInitResponseSchema } from '@/lib/validators/bff-configurator'
+import { filterMaterials } from '@/lib/api/bff-configurator-utils'
 import { createClient } from '@supabase/supabase-js'
 // 기존 PricingAPI 사용은 테스트 모킹과 충돌하므로 이 라우트에서는 직접 DB 조회로 대체
 // import { PricingAPI } from '@/lib/pricing'
@@ -84,11 +85,7 @@ interface ConfiguratorResponse {
   }
 }
 
-// Exported for unit testing (Story 2.3A.3)
-export function filterMaterials(materials: any[]): any[] {
-  if (!Array.isArray(materials)) return []
-  return materials.filter((m: any) => m?.is_active !== false && m?.id !== 'disabled')
-}
+// (moved to '@/lib/api/bff-configurator-utils')
 
 // 쿼리 파라미터 스키마
 const configuratorQuerySchema = z.object({
@@ -192,6 +189,7 @@ async function handleGet(request: NextRequest) {
     try {
       const materialsResult: any = await (supabase.from('materials').select('*'))
       materials = materialsResult?.data || []
+      try { __order.push('materials') } catch {}
     } catch (e) {
       warnings.push('Failed to load materials')
     }
@@ -199,6 +197,7 @@ async function handleGet(request: NextRequest) {
     try {
       const rulesResult: any = await (supabase.from('pricing_rules').select('*'))
       pricingRules = rulesResult?.data || []
+      try { __order.push('pricing_rules') } catch {}
     } catch (e) {
       warnings.push('Failed to load pricing rules')
       pricingRules = []
@@ -208,6 +207,7 @@ async function handleGet(request: NextRequest) {
       try {
         const designsResult: any = await (supabase.from('saved_designs').select('*'))
         savedDesigns = designsResult?.data || []
+        try { __order.push('saved_designs') } catch {}
       } catch (e) {
         warnings.push('Failed to load saved designs')
       }
@@ -225,6 +225,7 @@ async function handleGet(request: NextRequest) {
         userProfile = Array.isArray(data)
           ? (data.find((p: any) => p.id === authContext.user.id) || data[0])
           : data
+        try { __order.push('user_profiles') } catch {}
       } catch (e) {
         warnings.push('Failed to load user profile')
       }

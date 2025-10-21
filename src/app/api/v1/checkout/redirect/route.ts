@@ -196,7 +196,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         error: 'Invalid parameters',
-        details: error.errors
+        details: (error as any).issues || (error as any).errors
       }, { status: 400 })
     }
 

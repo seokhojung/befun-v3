@@ -183,7 +183,7 @@ const saveDesignSchema = z.object({
     color: z.string().regex(/^#[0-9A-F]{6}$/i, '올바른 색상 코드 형식이 아닙니다'),
     finish: z.enum(['matte', 'glossy', 'satin']).optional(),
   }),
-  custom_specs: z.record(z.any()).optional(), // JSONB로 저장될 추가 사양
+  custom_specs: z.record(z.string(), z.any()).optional(), // JSONB로 저장될 추가 사양
   tags: z.array(z.string().max(20)).max(10, '태그는 최대 10개까지 등록할 수 있습니다').optional(),
   is_public: z.boolean().default(false),
   estimated_price: z.number().optional(),
@@ -373,7 +373,7 @@ async function handleGet(request: NextRequest) {
       name: design.name,
       description: design.description,
       user_id: design.user_id,
-      user_email: design.user_profiles?.email,
+      user_email: (design as any).user_profiles?.email,
       created_at: design.created_at,
       updated_at: design.updated_at,
       status: design.status || 'draft',

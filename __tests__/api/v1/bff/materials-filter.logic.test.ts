@@ -1,4 +1,5 @@
-import { filterMaterials } from '@/app/api/v1/bff/configurator/route'
+// @ts-nocheck
+import { filterMaterials } from '@/lib/api/bff-configurator-utils'
 
 describe('filterMaterials (Story 2.3A.3)', () => {
   it('filters out inactive and id=="disabled"', () => {
@@ -16,4 +17,3 @@ describe('filterMaterials (Story 2.3A.3)', () => {
     expect(ids).not.toContain('disabled')
   })
 })
-

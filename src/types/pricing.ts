@@ -21,6 +21,9 @@ export interface PriceCalculationRequest {
   height_cm: number
   material: MaterialType
   options?: Record<string, any>
+  // API 확장 필드(선택): 서버 스키마와 호환
+  use_cache?: boolean
+  estimate_only?: boolean
 }
 
 export interface PriceBreakdown {

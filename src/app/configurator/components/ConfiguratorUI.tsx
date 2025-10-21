@@ -253,9 +253,7 @@ export default function ConfiguratorUI() {
         width_cm: newSettings.dimensions.width * 100,
         depth_cm: newSettings.dimensions.depth * 100,
         height_cm: newSettings.dimensions.height * 100,
-        material: materialTypeMapping[materialType],
-        use_cache: true,
-        estimate_only: false
+        material: materialTypeMapping[materialType]
       })
     }
   }, []) // 빈 의존성 배열 - 무한 루프 방지!
@@ -314,12 +312,12 @@ export default function ConfiguratorUI() {
         calculated_price: priceData.total,
         price_breakdown: {
           base_price: priceData.base_price,
-          material_modifier: priceData.material_modifier,
+          material_modifier: (priceData as any).material_modifier ?? priceData.material_info?.modifier,
           volume_m3: priceData.volume_m3,
           subtotal: priceData.subtotal,
           tax: priceData.tax,
           total: priceData.total,
-          currency: priceData.currency
+          currency: (priceData as any).currency ?? 'KRW'
         },
         color: currentMaterial?.color,
         name: designName || `맞춤 책상 (${settings.dimensions.width}×${settings.dimensions.depth}×${settings.dimensions.height}cm)`
@@ -412,9 +410,7 @@ export default function ConfiguratorUI() {
                     width_cm: settings.dimensions.width * 100,
                     depth_cm: settings.dimensions.depth * 100,
                     height_cm: settings.dimensions.height * 100,
-                    material: materialType,
-                    use_cache: false, // 재시도 시 캐시 무시
-                    estimate_only: false
+                    material: materialType
                   })
                 }
               }

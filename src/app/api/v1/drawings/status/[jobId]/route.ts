@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { jobId: s
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      throw new UnauthorizedError('Authentication required', undefined, requestId)
+      throw new UnauthorizedError('Authentication required', requestId)
     }
 
     // Validate path params
@@ -40,12 +40,12 @@ export async function GET(request: NextRequest, { params }: { params: { jobId: s
     const job = await getDrawingJob(jobId)
 
     if (!job) {
-      throw new NotFoundError('Drawing job not found', undefined, requestId)
+      throw new NotFoundError('Drawing job not found', requestId)
     }
 
     // Verify ownership
     if (job.user_id !== user.id) {
-      throw new UnauthorizedError('You do not have permission to view this job', undefined, requestId)
+      throw new UnauthorizedError('You do not have permission to view this job', requestId)
     }
 
     // Return job status

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { isMockMode } from '@/lib/utils/env-check'
 import { mockGetUser } from '@/lib/utils/mock-auth'
 import type { ApiResponse, AuthResponse } from '@/types/auth'
+import { getCorsHeaders } from '@/lib/utils/cors'
 
 // 세션 유효성 검증 및 갱신
 export async function GET(request: NextRequest) {

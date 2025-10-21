@@ -34,7 +34,7 @@ class MemoryCache {
     size: 0,
     hitRate: 0,
   }
-  private cleanupInterval: NodeJS.Timer | null = null
+  private cleanupInterval: NodeJS.Timeout | null = null
   private maxSize: number = 10000 // 최대 캐시 항목 수
   private cleanupIntervalMs: number = 5 * 60 * 1000 // 5분
 

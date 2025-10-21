@@ -13,7 +13,7 @@ export interface ApiResponse<T = any> {
 
 // API 에러 타입
 export interface ApiError {
-  code: string
+  code: ApiErrorCode
   message: string
   details?: any
   stack?: string // 개발 환경에서만 포함
@@ -112,8 +112,8 @@ export interface ApiLogEntry {
   message: string
   requestId: string
   userId?: string
-  method: string
-  url: string
+  method?: string
+  url?: string
   statusCode?: number
   responseTime?: number
   userAgent?: string

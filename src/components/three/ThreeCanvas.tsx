@@ -15,7 +15,7 @@ interface ThreeCanvasProps {
 
 export default function ThreeCanvas({ onSceneReady, onPerformanceUpdate, onInitError, className = '' }: ThreeCanvasProps) {
   console.debug('[ThreeCanvas] function render start')
-  const mountRef = useRef<HTMLDivElement>(null)
+  const mountRef = useRef<HTMLDivElement | null>(null)
   const [mountReady, setMountReady] = useState(false)
   const [webglSupported, setWebglSupported] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)

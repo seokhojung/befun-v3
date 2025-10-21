@@ -72,7 +72,7 @@ class PerformanceMonitor {
 
   private readonly maxMetricsHistory = 10000 // 최대 메트릭 히스토리
   private readonly cleanupIntervalMs = 60 * 60 * 1000 // 1시간
-  private cleanupInterval: NodeJS.Timer | null = null
+  private cleanupInterval: NodeJS.Timeout | null = null
 
   constructor() {
     // 주기적으로 오래된 메트릭 정리

@@ -1,5 +1,6 @@
 // API 에러 처리 유틸리티
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import type { ApiResponse, ApiError, ApiErrorCode } from '@/types/api'
 import { API_ERROR_CODES } from '@/types/api'
 
@@ -45,6 +46,9 @@ export class AuthorizationError extends ApiException {
     super(API_ERROR_CODES.FORBIDDEN, message, 403, undefined, requestId)
   }
 }
+
+// 호환: 일부 경로에서 UnauthorizedError 이름을 사용
+export class UnauthorizedError extends AuthenticationError {}
 
 export class NotFoundError extends ApiException {
   constructor(resource: string = '리소스', requestId?: string) {
@@ -224,9 +228,9 @@ export function handleApiError(error: unknown, requestId?: string): NextResponse
 
 // 비동기 API 핸들러 래퍼 (에러 처리 자동화)
 export function withErrorHandling(
-  handler: (request: Request, context?: any) => Promise<NextResponse>
+  handler: (request: any, context?: any) => Promise<NextResponse<any>>
 ) {
-  return async (request: Request, context?: any): Promise<NextResponse> => {
+  return async (request: any, context?: any): Promise<NextResponse<any>> => {
     const requestId = crypto.randomUUID()
 
     try {

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { validateRequestBody } from '@/lib/api/validation'
 import { handleApiError, UnauthorizedError } from '@/lib/api/errors'
-import { rateLimiter } from '@/lib/api/rate-limiter'
+import { checkApiRateLimit, getRateLimitHeaders } from '@/lib/api/rate-limiter'
 import { supabase } from '@/lib/supabase'
 import { createDrawingJob, processDrawingJob } from '@/lib/drawing/drawing-service'
 
@@ -35,15 +35,13 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      throw new UnauthorizedError('Authentication required', undefined, requestId)
+      throw new UnauthorizedError('Authentication required', requestId)
     }
 
-    // Rate limiting: 10 requests per minute per user
-    const rateLimitKey = `drawing-generation:${user.id}`
-    const rateLimitResult = await rateLimiter.check(rateLimitKey, 10, 60)
-
+    // Rate limiting: 기본 정책 적용 (IP/User 기반 내부 정책)
+    const rateLimitResult = checkApiRateLimit(request, requestId)
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         {
           success: false,
           error: 'Rate limit exceeded. Please try again later.',
@@ -51,6 +49,8 @@ export async function POST(request: NextRequest) {
         },
         { status: 429 }
       )
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     // Validate request body
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (design.user_id !== user.id) {
-      throw new UnauthorizedError('You do not have permission to generate drawing for this design', undefined, requestId)
+      throw new UnauthorizedError('You do not have permission to generate drawing for this design', requestId)
     }
 
     // Create drawing job

@@ -15,10 +15,8 @@ const priceCalculationSchema = z.object({
   width_cm: z.number().min(1).max(1000, '가로는 1cm~1000cm 범위여야 합니다'),
   depth_cm: z.number().min(1).max(1000, '세로는 1cm~1000cm 범위여야 합니다'),
   height_cm: z.number().min(1).max(300, '높이는 1cm~300cm 범위여야 합니다'),
-  material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'], {
-    errorMap: () => ({ message: '유효하지 않은 재료 타입입니다' })
-  }),
-  options: z.record(z.any()).optional(),
+  material: z.enum(['wood', 'mdf', 'steel', 'metal', 'glass', 'fabric'] as const),
+  options: z.record(z.string(), z.any()).optional(),
   use_cache: z.boolean().default(true), // 캐시 사용 여부
   estimate_only: z.boolean().default(false) // 빠른 추정 모드
 })
@@ -107,7 +105,7 @@ function jsonOk<T>(data: T, status = 200) {
       headers: { 'Content-Type': 'application/json' }
     }) as any
   }
-  return createSuccessResponse(data as any)
+  return createSuccessResponse(data as any, undefined as any)
 }
 function jsonErr(error: any, status?: number) {
   if (isTestEnv) {
@@ -117,7 +115,7 @@ function jsonErr(error: any, status?: number) {
       headers: { 'Content-Type': 'application/json' }
     }) as any
   }
-  return createErrorResponse(error as any)
+  return createErrorResponse(error as any, undefined)
 }
 
 // POST 핸들러 - 가격 계산
@@ -241,10 +239,12 @@ async function handlePost(request: NextRequest) {
 }
 
 // 단일 가격 계산 처리
+type TimerLike = { complete: (status: number) => void }
+
 async function handleSingleCalculation(
   body: any,
   requestId: string,
-  timer: RequestTimer
+  timer: TimerLike
 ): Promise<NextResponse> {
   try {
     // 요청 데이터 검증 (이미 파싱된 body 사용)
@@ -330,7 +330,7 @@ async function handleSingleCalculation(
         errors: error.errors
       })
       timer.complete(400)
-      const errorMessage = error.errors?.map(e => e.message).join(', ') || 'Validation failed'
+      const errorMessage = error.errors?.map((e: any) => e.message).join(', ') || 'Validation failed'
       return jsonErr({ code: API_ERROR_CODES.BAD_REQUEST, message: `유효하지 않은 요청: ${errorMessage}` }, 400)
     }
 
@@ -358,7 +358,7 @@ async function handleSingleCalculation(
 async function handleBatchCalculation(
   body: any,
   requestId: string,
-  timer: RequestTimer
+  timer: TimerLike
 ): Promise<NextResponse> {
   try {
     // 요청 데이터 검증 (이미 파싱된 body 사용)
@@ -460,7 +460,7 @@ async function handleBatchCalculation(
         errors: error.errors
       })
       timer.complete(400)
-      const errorMessage = error.errors?.map(e => e.message).join(', ') || 'Validation failed'
+      const errorMessage = error.errors?.map((e: any) => e.message).join(', ') || 'Validation failed'
       return jsonErr({ code: API_ERROR_CODES.BAD_REQUEST, message: `유효하지 않은 요청: ${errorMessage}` }, 400)
     }
 

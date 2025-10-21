@@ -180,10 +180,10 @@ export default function CartRetryPage() {
             <div className="space-y-3">
               <Button
                 onClick={handleRetry}
-                disabled={retryStatus.status === 'retrying'}
+                disabled={false}
                 className="w-full flex items-center gap-2"
               >
-                <RefreshCw className={`w-4 h-4 ${retryStatus.status === 'retrying' ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4`} />
                 다시 시도
               </Button>
 

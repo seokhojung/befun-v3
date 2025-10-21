@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @jest-environment node
  */
@@ -92,3 +93,5 @@ describe('BFF Configurator materials filtering', () => {
     expect(ids).not.toContain('disabled')
   })
 })
+
+export {}

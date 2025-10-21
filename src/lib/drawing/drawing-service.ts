@@ -3,7 +3,7 @@
  * Story 4.1: Drawing Generation and Design Management
  */
 
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { DrawingJob, DrawingDesignData, DrawingJobStatus } from '@/types/drawing'
 import { generateDrawingPDF } from './pdf-generator'
 
